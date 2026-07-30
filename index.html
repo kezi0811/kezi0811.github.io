@@ -156,107 +156,6 @@
   
 
   <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2026/07/30/github%E6%90%AD%E5%8D%9A%E5%AE%A2%E6%80%BB%E7%BB%93/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="kezi">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="个人学习记录">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content=" | 个人学习记录">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2026/07/30/github%E6%90%AD%E5%8D%9A%E5%AE%A2%E6%80%BB%E7%BB%93/" class="post-title-link" itemprop="url">github搭博客总结</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-      
-
-      <time title="创建时间：2026-07-30 10:58:37 / 修改时间：11:25:48" itemprop="dateCreated datePublished" datetime="2026-07-30T10:58:37+08:00">2026-07-30</time>
-    </span>
-
-  
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <h1 id="前置环境安装说明"><a href="#前置环境安装说明" class="headerlink" title="&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;前置环境安装说明&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;"></a>&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;前置环境安装说明&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;</h1><p> 安装Git：官网 git-scm.com，按需勾选桌面快捷方式，其余默认安装<br> 安装NodeJS：nodejs.org&#x2F;en&#x2F;download，全部默认选项安装</p>
-<h1 id="1、全局安装Hexo与部署依赖"><a href="#1、全局安装Hexo与部署依赖" class="headerlink" title="1、全局安装Hexo与部署依赖"></a>1、全局安装Hexo与部署依赖</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">npm install hexo -g</span><br><span class="line">npm install --save hexo-deployer-git</span><br></pre></td></tr></table></figure>
-
-<h1 id="2、生成Github-SSH密钥，替换为个人邮箱，执行后连续三次回车"><a href="#2、生成Github-SSH密钥，替换为个人邮箱，执行后连续三次回车" class="headerlink" title="2、生成Github SSH密钥，替换为个人邮箱，执行后连续三次回车"></a>2、生成Github SSH密钥，替换为个人邮箱，执行后连续三次回车</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh-keygen -t rsa -C <span class="string">&quot;你的github注册邮箱&quot;</span></span><br></pre></td></tr></table></figure>
-
-<p> 查看密钥目录</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> ~/.ssh</span><br></pre></td></tr></table></figure>
-
-<p> 复制id_rsa.pub内容粘贴至Github后台SSH配置页面</p>
-<h1 id="测试SSH连通性"><a href="#测试SSH连通性" class="headerlink" title="测试SSH连通性"></a>测试SSH连通性</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh -T git@github.com</span><br></pre></td></tr></table></figure>
-
-<h1 id="3、配置全局Git账号信息"><a href="#3、配置全局Git账号信息" class="headerlink" title="3、配置全局Git账号信息"></a>3、配置全局Git账号信息</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git config --global user.name <span class="string">&quot;liyunchen&quot;</span></span><br><span class="line">git config --global user.email <span class="string">&quot;xxx@163.com&quot;</span></span><br></pre></td></tr></table></figure>
-
-<h1 id="Hexo基础指令"><a href="#Hexo基础指令" class="headerlink" title="&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;Hexo基础指令&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;"></a>&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;Hexo基础指令&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">hexo new <span class="string">&quot;postName&quot;</span>          新建文章</span><br><span class="line">hexo new page <span class="string">&quot;pageName&quot;</span>     新建独立页面</span><br><span class="line">hexo generate                编译静态文件至public</span><br><span class="line">hexo server                  本地预览 默认4000端口 Ctrl+C关闭</span><br><span class="line">hexo deploy                  部署远端仓库</span><br><span class="line">hexo <span class="built_in">help</span>                    查看帮助文档</span><br><span class="line">hexo version                 查看Hexo版本</span><br></pre></td></tr></table></figure>
-
-<h1 id="初始化博客（当前文件夹必须为空）"><a href="#初始化博客（当前文件夹必须为空）" class="headerlink" title="初始化博客（当前文件夹必须为空）"></a>初始化博客（当前文件夹必须为空）</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">hexo init</span><br><span class="line">hexo g</span><br></pre></td></tr></table></figure>
-
-<h1 id="部署Next主题"><a href="#部署Next主题" class="headerlink" title="&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;部署Next主题&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;"></a>&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;部署Next主题&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/next-theme/hexo-theme-next themes/next</span><br></pre></td></tr></table></figure>
-
-<h1 id="修改配置文件theme字段为next"><a href="#修改配置文件theme字段为next" class="headerlink" title="修改配置文件theme字段为next"></a>修改配置文件theme字段为next</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sed -i <span class="string">&#x27;s/theme: landscape/theme: next/&#x27;</span> _config.yml</span><br></pre></td></tr></table></figure>
-
-<h1 id="清理缓存启动预览"><a href="#清理缓存启动预览" class="headerlink" title="清理缓存启动预览"></a>清理缓存启动预览</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo clean &amp;&amp; hexo s</span><br></pre></td></tr></table></figure>
-
-<p>访问：localhost:4000</p>
-<h1 id="在config-yml写入站点基础配置"><a href="#在config-yml写入站点基础配置" class="headerlink" title="在config.yml写入站点基础配置"></a>在config.yml写入站点基础配置</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Site</span></span><br><span class="line">title: 个人学习记录</span><br><span class="line">subtitle: <span class="string">&#x27;&#x27;</span></span><br><span class="line">description: <span class="string">&#x27;&#x27;</span></span><br><span class="line">keywords:</span><br><span class="line">author: kezi</span><br><span class="line">language: zh-CN</span><br><span class="line">timezone: Asia/Shanghai</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
-
-
-<h1 id="修改配置后让其生效的命令"><a href="#修改配置后让其生效的命令" class="headerlink" title="修改配置后让其生效的命令"></a>修改配置后让其生效的命令</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">hexo clean</span><br><span class="line">hexo g</span><br><span class="line">hexo d</span><br></pre></td></tr></table></figure>
-
-<h1 id="配置Github-Pages部署"><a href="#配置Github-Pages部署" class="headerlink" title="&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;配置Github Pages部署&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;"></a>&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;配置Github Pages部署&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"> 建仓库(New repository) --&gt; 命名为用户名.github.io --&gt; Add a README file --&gt; Create repository --&gt; 编辑_config.yml文件 在deploy块合适位置加上</span><br><span class="line"></span><br><span class="line">deploy:</span><br><span class="line">  <span class="built_in">type</span>: git</span><br><span class="line">  repo: git@github.com:liyunchen/liyunchen.github.io.git</span><br><span class="line">  branch: main</span><br><span class="line"> 将repo仓库改成自己的，branch看自己是master还是main</span><br><span class="line"></span><br><span class="line">hexo d 发送到github</span><br></pre></td></tr></table></figure>
-
-<p>##编写博客<br>hexo new “新文章名字”<br>然后会在 博客根目录&#x2F;source&#x2F;_posts&#x2F;生成一个.md文件，直接打开编辑即可</p>
-
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
     <link itemprop="mainEntityOfPage" href="http://example.com/2026/07/28/hello-world/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -320,6 +219,113 @@
 
 <p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
 
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2026/04/25/github%E6%90%AD%E5%8D%9A%E5%AE%A2%E6%80%BB%E7%BB%93/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="kezi">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="个人学习记录">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content=" | 个人学习记录">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/2026/04/25/github%E6%90%AD%E5%8D%9A%E5%AE%A2%E6%80%BB%E7%BB%93/" class="post-title-link" itemprop="url">github搭博客总结</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-04-25 10:58:37" itemprop="dateCreated datePublished" datetime="2026-04-25T10:58:37+08:00">2026-04-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-07-30 11:36:51" itemprop="dateModified" datetime="2026-07-30T11:36:51+08:00">2026-07-30</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <h1 id="前置环境安装说明"><a href="#前置环境安装说明" class="headerlink" title="&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;前置环境安装说明&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;"></a>&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;前置环境安装说明&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;</h1><p> 安装Git：官网 git-scm.com，按需勾选桌面快捷方式，其余默认安装<br> 安装NodeJS：nodejs.org&#x2F;en&#x2F;download，全部默认选项安装</p>
+<h1 id="1、全局安装Hexo与部署依赖"><a href="#1、全局安装Hexo与部署依赖" class="headerlink" title="1、全局安装Hexo与部署依赖"></a>1、全局安装Hexo与部署依赖</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">npm install hexo -g</span><br><span class="line">npm install --save hexo-deployer-git</span><br></pre></td></tr></table></figure>
+
+<h1 id="2、生成Github-SSH密钥，替换为个人邮箱，执行后连续三次回车"><a href="#2、生成Github-SSH密钥，替换为个人邮箱，执行后连续三次回车" class="headerlink" title="2、生成Github SSH密钥，替换为个人邮箱，执行后连续三次回车"></a>2、生成Github SSH密钥，替换为个人邮箱，执行后连续三次回车</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh-keygen -t rsa -C <span class="string">&quot;你的github注册邮箱&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p> 查看密钥目录</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> ~/.ssh</span><br></pre></td></tr></table></figure>
+
+<p> 复制id_rsa.pub内容粘贴至Github后台SSH配置页面</p>
+<h1 id="测试SSH连通性"><a href="#测试SSH连通性" class="headerlink" title="测试SSH连通性"></a>测试SSH连通性</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh -T git@github.com</span><br></pre></td></tr></table></figure>
+
+<h1 id="3、配置全局Git账号信息"><a href="#3、配置全局Git账号信息" class="headerlink" title="3、配置全局Git账号信息"></a>3、配置全局Git账号信息</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git config --global user.name <span class="string">&quot;liyunchen&quot;</span></span><br><span class="line">git config --global user.email <span class="string">&quot;xxx@163.com&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="Hexo基础指令"><a href="#Hexo基础指令" class="headerlink" title="&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;Hexo基础指令&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;"></a>&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;Hexo基础指令&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">hexo new <span class="string">&quot;postName&quot;</span>          新建文章</span><br><span class="line">hexo new page <span class="string">&quot;pageName&quot;</span>     新建独立页面</span><br><span class="line">hexo generate                编译静态文件至public</span><br><span class="line">hexo server                  本地预览 默认4000端口 Ctrl+C关闭</span><br><span class="line">hexo deploy                  部署远端仓库</span><br><span class="line">hexo <span class="built_in">help</span>                    查看帮助文档</span><br><span class="line">hexo version                 查看Hexo版本</span><br></pre></td></tr></table></figure>
+
+<h1 id="初始化博客（当前文件夹必须为空）"><a href="#初始化博客（当前文件夹必须为空）" class="headerlink" title="初始化博客（当前文件夹必须为空）"></a>初始化博客（当前文件夹必须为空）</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">hexo init</span><br><span class="line">hexo g</span><br></pre></td></tr></table></figure>
+
+<h1 id="部署Next主题"><a href="#部署Next主题" class="headerlink" title="&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;部署Next主题&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;"></a>&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;部署Next主题&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/next-theme/hexo-theme-next themes/next</span><br></pre></td></tr></table></figure>
+
+<h1 id="修改配置文件theme字段为next"><a href="#修改配置文件theme字段为next" class="headerlink" title="修改配置文件theme字段为next"></a>修改配置文件theme字段为next</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sed -i <span class="string">&#x27;s/theme: landscape/theme: next/&#x27;</span> _config.yml</span><br></pre></td></tr></table></figure>
+
+<h1 id="清理缓存启动预览"><a href="#清理缓存启动预览" class="headerlink" title="清理缓存启动预览"></a>清理缓存启动预览</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">hexo clean &amp;&amp; hexo s 启动本地预览</span><br><span class="line">localhost:4000 本地预览</span><br></pre></td></tr></table></figure>
+
+
+<h1 id="在config-yml的Site块修改写入站点基础配置"><a href="#在config-yml的Site块修改写入站点基础配置" class="headerlink" title="在config.yml的Site块修改写入站点基础配置"></a>在config.yml的Site块修改写入站点基础配置</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Site</span></span><br><span class="line">title: 个人学习记录</span><br><span class="line">subtitle: <span class="string">&#x27;&#x27;</span></span><br><span class="line">description: <span class="string">&#x27;&#x27;</span></span><br><span class="line">keywords:</span><br><span class="line">author: kezi</span><br><span class="line">language: zh-CN</span><br><span class="line">timezone: Asia/Shanghai</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+
+<h1 id="修改配置后让其生效的命令"><a href="#修改配置后让其生效的命令" class="headerlink" title="修改配置后让其生效的命令"></a>修改配置后让其生效的命令</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">hexo clean</span><br><span class="line">hexo g</span><br><span class="line">hexo d</span><br></pre></td></tr></table></figure>
+
+<h1 id="部署到Github"><a href="#部署到Github" class="headerlink" title="&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;部署到Github&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;"></a>&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;部署到Github&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"> 建仓库(New repository) --&gt; 命名为用户名.github.io --&gt; Add a README file --&gt; Create repository --&gt; 编辑_config.yml文件 在deploy块合适位置加上</span><br><span class="line"></span><br><span class="line">deploy:</span><br><span class="line">  <span class="built_in">type</span>: git</span><br><span class="line">  repo: git@github.com:liyunchen/liyunchen.github.io.git</span><br><span class="line">  branch: main</span><br><span class="line"> 将repo仓库改成自己的，branch看自己是master还是main</span><br><span class="line"></span><br><span class="line">hexo d 发送到github</span><br></pre></td></tr></table></figure>
+
+<p>#编写博客</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">hexo new <span class="string">&quot;新文章名字&quot;</span></span><br><span class="line">然后会在 博客根目录/source/_posts/生成一个.md文件，直接打开记事本编辑即可</span><br><span class="line"></span><br><span class="line">hexo g</span><br><span class="line">hexo d 推送</span><br></pre></td></tr></table></figure>
       
     </div>
 
