@@ -1432,7 +1432,7 @@ pre code {
     vertical-align: middle;
   }
   .links-of-author a::before {
-    background: #c2334f;
+    background: #ec05a3;
     display: inline-block;
     margin-right: 3px;
     transform: translateY(-2px);
@@ -3043,4 +3043,18 @@ header.header {
   background: transparent !important;
   border-radius: 0 !important;
   box-shadow: none !important;
+}
+.post-body h1 .header-anchor,
+.post-body h2 .header-anchor,
+.post-body h3 .header-anchor,
+.post-body h4 .header-anchor,
+.post-body h5 .header-anchor,
+.post-body h6 .header-anchor,
+.post-body h1 .headerlink,
+.post-body h2 .headerlink,
+.post-body h3 .headerlink,
+.post-body h4 .headerlink,
+.post-body h5 .headerlink,
+.post-body h6 .headerlink {
+  display: none !important;
 }
