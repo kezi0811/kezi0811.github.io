@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"example.com","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.28.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":"mac","show_result":true},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="本文梳理 Nginx 的核心原理（上下游、反向代理、负载均衡）与配置文件结构，并结合作者环境记录 Docker 离线部署 Nginx（含反向代理+负载均衡实战）、Nginx 联动 PHP-FPM 解析 PHP 的完整流程，最后给出常用配置片段速查与排错清单。PHP 部分聚焦「Nginx 不解析 PHP、由 PHP-FPM 通过 FastCGI 通信」这一关键机制。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="nginx和php">
+<meta property="og:url" content="http://example.com/2026/06/25/nginx%E5%92%8Cphp/index.html">
+<meta property="og:site_name" content="Kezi的技术笔记">
+<meta property="og:description" content="本文梳理 Nginx 的核心原理（上下游、反向代理、负载均衡）与配置文件结构，并结合作者环境记录 Docker 离线部署 Nginx（含反向代理+负载均衡实战）、Nginx 联动 PHP-FPM 解析 PHP 的完整流程，最后给出常用配置片段速查与排错清单。PHP 部分聚焦「Nginx 不解析 PHP、由 PHP-FPM 通过 FastCGI 通信」这一关键机制。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-06-24T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-08-05T05:59:53.680Z">
+<meta property="article:author" content="kezi">
+<meta property="article:tag" content="nginx">
+<meta property="article:tag" content="php">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="http://example.com/2026/06/25/nginx%E5%92%8Cphp/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"http://example.com/2026/06/25/nginx%E5%92%8Cphp/","path":"2026/06/25/nginx和php/","title":"nginx和php"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>nginx和php | Kezi的技术笔记</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Kezi的技术笔记</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%A6%82%E8%BF%B0%E4%B8%8E%E5%8E%9F%E7%90%86"><span class="nav-number">1.</span> <span class="nav-text">&#x3D;&#x3D;概述与原理&#x3D;&#x3D;</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%B8%8A%E4%B8%8B%E6%B8%B8%E6%A6%82%E5%BF%B5"><span class="nav-number">1.1.</span> <span class="nav-text">上下游概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86%E5%8E%9F%E7%90%86%EF%BC%88%E6%A0%87%E5%87%86%E6%B5%81%E7%A8%8B%EF%BC%89"><span class="nav-number">1.2.</span> <span class="nav-text">反向代理原理（标准流程）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E5%8E%9F%E7%90%86%EF%BC%88%E6%A0%87%E5%87%86%E6%B5%81%E7%A8%8B%EF%BC%89"><span class="nav-number">1.3.</span> <span class="nav-text">负载均衡原理（标准流程）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Nginx-%E4%B8%8E-PHP-%E7%9A%84%E5%85%B3%E7%B3%BB"><span class="nav-number">1.4.</span> <span class="nav-text">Nginx 与 PHP 的关系</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E7%BB%93%E6%9E%84%E4%B8%8E%E4%BD%8D%E7%BD%AE"><span class="nav-number">2.</span> <span class="nav-text">&#x3D;&#x3D;配置文件结构与位置&#x3D;&#x3D;</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%AB%AF%E5%8F%A3%E8%AF%B4%E6%98%8E"><span class="nav-number">3.</span> <span class="nav-text">&#x3D;&#x3D;端口说明&#x3D;&#x3D;</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Docker-%E7%A6%BB%E7%BA%BF%E9%83%A8%E7%BD%B2-Nginx"><span class="nav-number">4.</span> <span class="nav-text">&#x3D;&#x3D;Docker 离线部署 Nginx&#x3D;&#x3D;</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E6%9C%BA%E9%9D%99%E6%80%81%E7%AB%99%E7%82%B9%E9%85%8D%E7%BD%AE"><span class="nav-number">4.1.</span> <span class="nav-text">本机静态站点配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86-%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E9%85%8D%E7%BD%AE"><span class="nav-number">4.2.</span> <span class="nav-text">反向代理 + 负载均衡配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%AF%E5%8A%A8%E5%AE%B9%E5%99%A8"><span class="nav-number">4.3.</span> <span class="nav-text">启动容器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%8E%E7%AB%AF%E8%8A%82%E7%82%B9%EF%BC%88CentOS-7-9%EF%BC%89%E9%85%8D%E7%BD%AE"><span class="nav-number">4.4.</span> <span class="nav-text">后端节点（CentOS 7.9）配置</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Nginx-%E8%81%94%E5%8A%A8-PHP-FPM"><span class="nav-number">5.</span> <span class="nav-text">&#x3D;&#x3D;Nginx 联动 PHP-FPM&#x3D;&#x3D;</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8E%9F%E7%90%86%E4%B8%8E%E9%95%9C%E5%83%8F"><span class="nav-number">5.1.</span> <span class="nav-text">原理与镜像</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Nginx-%E9%85%8D%E7%BD%AE%EF%BC%88%E8%A7%A3%E6%9E%90-PHP%EF%BC%89"><span class="nav-number">5.2.</span> <span class="nav-text">Nginx 配置（解析 PHP）</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E6%A0%B8%E5%BF%83%E9%85%8D%E7%BD%AE%E7%89%87%E6%AE%B5%E9%80%9F%E6%9F%A5"><span class="nav-number">6.</span> <span class="nav-text">&#x3D;&#x3D;核心配置片段速查&#x3D;&#x3D;</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86-%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%EF%BC%88upstream-proxy-pass%EF%BC%89"><span class="nav-number">6.1.</span> <span class="nav-text">反向代理 + 负载均衡（upstream &#x2F; proxy_pass）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#root-%E4%B8%8E-alias-%E5%8C%BA%E5%88%AB"><span class="nav-number">6.2.</span> <span class="nav-text">root 与 alias 区别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%8D%E5%90%91%E4%BB%A3%E7%90%86%E5%B8%B8%E7%94%A8%E5%8F%82%E6%95%B0"><span class="nav-number">6.3.</span> <span class="nav-text">反向代理常用参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Gzip-%E5%8E%8B%E7%BC%A9"><span class="nav-number">6.4.</span> <span class="nav-text">Gzip 压缩</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#HTTPS-SSL%EF%BC%88%E7%AE%80%E7%95%A5%EF%BC%89"><span class="nav-number">6.5.</span> <span class="nav-text">HTTPS &#x2F; SSL（简略）</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%AA%8C%E8%AF%81%E4%B8%8E%E6%8E%92%E9%94%99"><span class="nav-number">7.</span> <span class="nav-text">&#x3D;&#x3D;验证与排错&#x3D;&#x3D;</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2026/06/25/nginx%E5%92%8Cphp/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="kezi">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Kezi的技术笔记">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="nginx和php | Kezi的技术笔记">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          nginx和php
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-06-25 00:00:00" itemprop="dateCreated datePublished" datetime="2026-06-25T00:00:00+08:00">2026-06-25</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-08-05 13:59:53" itemprop="dateModified" datetime="2026-08-05T13:59:53+08:00">2026-08-05</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>本文梳理 Nginx 的核心原理（上下游、反向代理、负载均衡）与配置文件结构，并结合作者环境记录 Docker 离线部署 Nginx（含反向代理+负载均衡实战）、Nginx 联动 PHP-FPM 解析 PHP 的完整流程，最后给出常用配置片段速查与排错清单。PHP 部分聚焦「Nginx 不解析 PHP、由 PHP-FPM 通过 FastCGI 通信」这一关键机制。</p>
+<span id="more"></span>
+
+<h1 id="概述与原理"><a href="#概述与原理" class="headerlink" title="&#x3D;&#x3D;概述与原理&#x3D;&#x3D;"></a>&#x3D;&#x3D;概述与原理&#x3D;&#x3D;</h1><p> Nginx 是高性能、高可靠的 Web 服务器与反向代理服务器，支持热部署，同时可作为负载均衡器、缓存、API 网关。</p>
+<h2 id="上下游概念"><a href="#上下游概念" class="headerlink" title="上下游概念"></a>上下游概念</h2><p> 对用户请求来说：<br>   下游（downstream）：用户&#x2F;浏览器一侧，请求从下游来。<br>   上游（upstream）：真正处理业务的服务器（Tomcat &#x2F; Java &#x2F; PHP &#x2F; 后端服务）。<br>   链路：用户请求 → Nginx → 上游服务器；响应结果 ← Nginx ← 上游服务器。<br> 静态网页多用 Nginx 直接托管；动态网页一般是 Nginx + Tomcat&#x2F;PHP（Nginx 在前，业务服务在后）。</p>
+<h2 id="反向代理原理（标准流程）"><a href="#反向代理原理（标准流程）" class="headerlink" title="反向代理原理（标准流程）"></a>反向代理原理（标准流程）</h2><p> 1 客户端向代理服务器（Nginx）发起请求，目标地址是 Nginx 自身。<br> 2 Nginx 接收请求，按规则转发到内网后端真实服务器。<br> 3 后端处理并返回响应给 Nginx。<br> 4 Nginx 把响应转发回客户端。<br> 5 客户端全程无感知后端存在，仅与 Nginx 交互。<br> 核心：代理面向内部服务器，隐藏后端拓扑、统一入口、提供安全隔离。</p>
+<h2 id="负载均衡原理（标准流程）"><a href="#负载均衡原理（标准流程）" class="headerlink" title="负载均衡原理（标准流程）"></a>负载均衡原理（标准流程）</h2><p> 1 负载均衡器维护一组可用后端节点列表。<br> 2 客户端请求统一进入负载均衡器。<br> 3 按调度算法（轮询、加权、IP 哈希等）选一台后端。<br> 4 将请求转发至选中节点。<br> 5 接收后端响应返回客户端。<br> 6 对后端做健康检查，自动剔除异常节点，不再分配流量。<br> 核心：把请求均匀&#x2F;合理分发，避免单点过载，提高并发与可用性。</p>
+<h2 id="Nginx-与-PHP-的关系"><a href="#Nginx-与-PHP-的关系" class="headerlink" title="Nginx 与 PHP 的关系"></a>Nginx 与 PHP 的关系</h2><p> Nginx 本身不直接解析 PHP，依靠 PHP-FPM（FastCGI 进程管理器）通信。<br> 流程：用户请求 → Nginx → 转发给 php-fpm 解析 PHP → 返回结果给 Nginx → 浏览器。<br> 关键点：Nginx 只负责把 .php 请求通过 FastCGI 交给 php-fpm（默认 9000 端口），由 php-fpm 执行 PHP 并返回。</p>
+<h1 id="配置文件结构与位置"><a href="#配置文件结构与位置" class="headerlink" title="&#x3D;&#x3D;配置文件结构与位置&#x3D;&#x3D;"></a>&#x3D;&#x3D;配置文件结构与位置&#x3D;&#x3D;</h1><p> 一个 Nginx 配置文件从外到内的层级：<br>   全局块（main）→ events 块 → http 块 → http 里的 server 块 → server 里的 location 块<br> 每一级大块内部可再配置本块的全局项。</p>
+<p> 全局块（main）：运行用户（user）、工作进程数（worker_processes）、错误日志路径与级别、pid 文件路径（用于 nginx -s reload&#x2F;stop 平滑启停）。<br> events 块：并发量（worker_connections）。理论最大并发 &#x3D; worker_processes × worker_connections。<br> http 块：mime 类型、访问&#x2F;错误日志、sendfile 零拷贝、tcp_nopush、keepalive 长连接、upstream 后端组、gzip、缓存、限流等。<br> server 块：监听端口（listen）、字符集（charset）、域名（server_name）。<br> location 块：root&#x2F;alias 路径规则、代理转发、重写、缓存等。</p>
+<p> 配置文件位置（只需在 http 块内配置）：<br>   主配置：&#x2F;etc&#x2F;nginx&#x2F;nginx.conf<br>   子配置（推荐）：&#x2F;etc&#x2F;nginx&#x2F;conf.d&#x2F;xxx.conf（主配置一般 include 该目录）</p>
+<h1 id="端口说明"><a href="#端口说明" class="headerlink" title="&#x3D;&#x3D;端口说明&#x3D;&#x3D;"></a>&#x3D;&#x3D;端口说明&#x3D;&#x3D;</h1><p> 本文涉及端口（按需放行防火墙）：<br>   80：Nginx 静态&#x2F;默认 Web<br>   81：示例里 Nginx 主节点容器内监听（发布为 8082）<br>   8081：后端 CentOS 节点容器发布端口（被负载节点）<br>   8082：对外访问入口（映射到容器 81）<br>   9000：PHP-FPM（FastCGI）<br>   443：HTTPS（如启用）</p>
+<h1 id="Docker-离线部署-Nginx"><a href="#Docker-离线部署-Nginx" class="headerlink" title="&#x3D;&#x3D;Docker 离线部署 Nginx&#x3D;&#x3D;"></a>&#x3D;&#x3D;Docker 离线部署 Nginx&#x3D;&#x3D;</h1><p> 作者的 nginx.tar.gz 是 docker 离线镜像包，适合内网&#x2F;无外网环境。</p>
+<p> 加载镜像并建目录：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">docker load -i nginx.tar.gz            <span class="comment"># 加载到本地镜像仓库</span></span><br><span class="line">docker images | grep nginx             <span class="comment"># 确认镜像已存在</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">mkdir</span> -p /opt/nginx/html               <span class="comment"># 网页文件目录</span></span><br><span class="line"><span class="built_in">mkdir</span> -p /opt/nginx/conf               <span class="comment"># 配置文件目录</span></span><br></pre></td></tr></table></figure>
+<p> 说明：若 docker images 看到的镜像名&#x2F;标签不是 nginx:latest，需先打标签再使用，例如 docker tag &lt;镜像ID&gt; nginx:latest，否则下面 docker run 会去拉取。</p>
+<h2 id="本机静态站点配置"><a href="#本机静态站点配置" class="headerlink" title="本机静态站点配置"></a>本机静态站点配置</h2><p> 在 &#x2F;opt&#x2F;nginx&#x2F;conf&#x2F;default.conf 写入（挂载到容器内 &#x2F;etc&#x2F;nginx&#x2F;conf.d）：</p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="attribute">listen</span>       <span class="number">80</span>;</span><br><span class="line">    <span class="attribute">server_name</span>  localhost;</span><br><span class="line">    <span class="attribute">root</span>   /usr/share/nginx/html;</span><br><span class="line">    <span class="attribute">index</span>  index.html index.htm;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="反向代理-负载均衡配置"><a href="#反向代理-负载均衡配置" class="headerlink" title="反向代理 + 负载均衡配置"></a>反向代理 + 负载均衡配置</h2><p> 在 &#x2F;opt&#x2F;nginx&#x2F;conf&#x2F; 新增配置（可单独建一个 .conf 文件）：</p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">upstream</span> backend &#123;</span><br><span class="line">    <span class="attribute">server</span> <span class="number">192.168.107.133:8081</span> weight=<span class="number">2</span>;   <span class="comment"># rocky9.7（主节点也做负载节点）</span></span><br><span class="line">    <span class="attribute">server</span> <span class="number">192.168.107.129:8081</span> weight=<span class="number">1</span>;   <span class="comment"># centos7.9</span></span><br><span class="line">    <span class="comment"># weight 越大分到的流量越多；默认策略为轮询</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="attribute">listen</span>       <span class="number">81</span>;</span><br><span class="line">    <span class="attribute">server_name</span>  localhost;</span><br><span class="line"></span><br><span class="line">    <span class="section">location</span> / &#123;</span><br><span class="line">        <span class="attribute">proxy_pass</span> http://backend;</span><br><span class="line">        <span class="attribute">proxy_set_header</span> Host <span class="variable">$host</span>;</span><br><span class="line">        <span class="attribute">proxy_set_header</span> X-Real-IP <span class="variable">$remote_addr</span>;</span><br><span class="line">        <span class="attribute">proxy_set_header</span> X-Forwarded-For <span class="variable">$proxy_add_x_forwarded_for</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> 说明：示例里 web 访问入口是 8082，Nginx 容器内监听 81，反向代理到两台后端的 8081 端口，实现负载。IP&#x2F;端口按你实际环境修改。</p>
+<h2 id="启动容器"><a href="#启动容器" class="headerlink" title="启动容器"></a>启动容器</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">docker run -d \</span><br><span class="line">  --name my-nginx \</span><br><span class="line">  --restart always \</span><br><span class="line">  -p 8082:81 \</span><br><span class="line">  -v /opt/nginx/html:/usr/share/nginx/html \</span><br><span class="line">  -v /opt/nginx/conf:/etc/nginx/conf.d \</span><br><span class="line">  nginx:latest</span><br><span class="line"></span><br><span class="line">docker restart my-nginx     <span class="comment"># 改完配置刷新服务</span></span><br><span class="line">docker ps                    <span class="comment"># 确认容器已起来</span></span><br></pre></td></tr></table></figure>
+
+<p> 放行防火墙（注意端口别冲突）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">firewall-cmd --add-port=81/tcp --permanent</span><br><span class="line">firewall-cmd --reload</span><br></pre></td></tr></table></figure>
+
+<h2 id="后端节点（CentOS-7-9）配置"><a href="#后端节点（CentOS-7-9）配置" class="headerlink" title="后端节点（CentOS 7.9）配置"></a>后端节点（CentOS 7.9）配置</h2><p> 后端节点也用 Nginx 容器跑静态页，作为被负载的真实服务器：</p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="attribute">listen</span> <span class="number">80</span>;</span><br><span class="line">    <span class="attribute">server_name</span> localhost;</span><br><span class="line">    <span class="attribute">root</span> /usr/share/nginx/html;</span><br><span class="line">    <span class="attribute">index</span> index.html index.htm;</span><br><span class="line">    <span class="section">location</span> / &#123;</span><br><span class="line">        <span class="attribute">try_files</span> <span class="variable">$uri</span> <span class="variable">$uri</span>/ /index.html;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">docker run -d \</span><br><span class="line">  --name nginx-proxy \</span><br><span class="line">  --restart always \</span><br><span class="line">  -p 8081:80 \</span><br><span class="line">  -v /opt/nginx/html:/usr/share/nginx/html \</span><br><span class="line">  nginx:latest</span><br></pre></td></tr></table></figure>
+<p> 说明：想确认负载是否生效，可给两台后端的 html 配成不同内容（如显示不同主机名），访问 8082 多刷几次即可辨认。</p>
+<h1 id="Nginx-联动-PHP-FPM"><a href="#Nginx-联动-PHP-FPM" class="headerlink" title="&#x3D;&#x3D;Nginx 联动 PHP-FPM&#x3D;&#x3D;"></a>&#x3D;&#x3D;Nginx 联动 PHP-FPM&#x3D;&#x3D;</h1><h2 id="原理与镜像"><a href="#原理与镜像" class="headerlink" title="原理与镜像"></a>原理与镜像</h2><p> Nginx 不解析 PHP，把 .php 请求经 FastCGI 转发给 php-fpm（默认 9000）。<br> 作者的 php8.2-fpm-image.tar 是 PHP-FPM 离线镜像：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker load -i php8.2-fpm-image.tar   <span class="comment"># 加载 PHP-FPM 离线镜像</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="Nginx-配置（解析-PHP）"><a href="#Nginx-配置（解析-PHP）" class="headerlink" title="Nginx 配置（解析 PHP）"></a>Nginx 配置（解析 PHP）</h2><p> 在 Nginx 的 server 块中加入如下 location（来自官方默认 nginx.conf 的 PHP 段）：</p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="attribute">listen</span> <span class="number">80</span>;</span><br><span class="line">    <span class="attribute">server_name</span> kod.oldboyedu.com;</span><br><span class="line">    <span class="attribute">root</span>         /usr/share/nginx/html;</span><br><span class="line">    <span class="attribute">index</span> index.php index.html;</span><br><span class="line"></span><br><span class="line">    <span class="section">location</span> <span class="regexp">~ \.php$</span> &#123;</span><br><span class="line">        <span class="attribute">root</span>         /usr/share/nginx/html;</span><br><span class="line">        <span class="attribute">fastcgi_pass</span> <span class="number">127.0.0.1:9000</span>;</span><br><span class="line">        <span class="attribute">fastcgi_index</span> index.php;</span><br><span class="line">        <span class="attribute">fastcgi_param</span> SCRIPT_FILENAME <span class="variable">$document_root</span><span class="variable">$fastcgi_script_name</span>;</span><br><span class="line">        <span class="attribute">include</span> fastcgi_params;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> 说明：<br>   fastcgi_pass 指向 php-fpm 地址；同机用 127.0.0.1:9000，容器环境需两容器网络互通（同一 docker network，地址用 php-fpm 容器名&#x2F;IP）。<br>   SCRIPT_FILENAME 必须正确（通常为 $document_root$fastcgi_script_name），否则会报 “File not found”。<br>   include fastcgi_params 提供 FastCGI 所需的内置参数。</p>
+<h1 id="核心配置片段速查"><a href="#核心配置片段速查" class="headerlink" title="&#x3D;&#x3D;核心配置片段速查&#x3D;&#x3D;"></a>&#x3D;&#x3D;核心配置片段速查&#x3D;&#x3D;</h1><h2 id="反向代理-负载均衡（upstream-proxy-pass）"><a href="#反向代理-负载均衡（upstream-proxy-pass）" class="headerlink" title="反向代理 + 负载均衡（upstream &#x2F; proxy_pass）"></a>反向代理 + 负载均衡（upstream &#x2F; proxy_pass）</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">upstream</span> mybackend &#123;</span><br><span class="line">    <span class="attribute">server</span> <span class="number">172.30.128.64:8081</span> fail_timeout=<span class="number">60s</span> max_fails=<span class="number">3</span>;  <span class="comment"># 60s 内失败 3 次则判定宕机，到期后再试</span></span><br><span class="line">    <span class="attribute">server</span> <span class="number">172.30.128.64:8082</span>;</span><br><span class="line">    <span class="attribute">server</span> <span class="number">172.30.128.64:8083</span> backup;                        <span class="comment"># 备机，主全挂才启用</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="section">location</span> / &#123;</span><br><span class="line">        <span class="attribute">proxy_pass</span> http://mybackend;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p> 调度策略：默认轮询；weight 加权；backup 备机；max_fails + fail_timeout 做健康检查&#x2F;熔断。</p>
+<h2 id="root-与-alias-区别"><a href="#root-与-alias-区别" class="headerlink" title="root 与 alias 区别"></a>root 与 alias 区别</h2><p> root：拼接规则，location &#x2F;book&#x2F; + root &#x2F;data ⇒ 实际路径 &#x2F;data&#x2F;book&#x2F;<br> alias：替换规则，location &#x2F;book&#x2F; + alias &#x2F;data&#x2F; ⇒ 实际路径 &#x2F;data&#x2F;（注意 alias 路径末尾要加 &#x2F;，否则易 404）</p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">location</span> /book/ &#123;</span><br><span class="line">    <span class="attribute">alias</span> /usr/local/nginx/test/book/;   <span class="comment"># 用 alias 末尾必须带 /</span></span><br><span class="line">    <span class="attribute">autoindex</span> <span class="literal">on</span>;                         <span class="comment"># 开启目录浏览</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="反向代理常用参数"><a href="#反向代理常用参数" class="headerlink" title="反向代理常用参数"></a>反向代理常用参数</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">proxy_connect_timeout</span> <span class="number">90</span>;</span><br><span class="line"><span class="attribute">proxy_send_timeout</span> <span class="number">90</span>;</span><br><span class="line"><span class="attribute">proxy_read_timeout</span> <span class="number">90</span>;</span><br><span class="line"><span class="attribute">proxy_set_header</span> Host <span class="variable">$host</span>;</span><br><span class="line"><span class="attribute">proxy_set_header</span> X-Real-IP <span class="variable">$remote_addr</span>;</span><br><span class="line"><span class="attribute">proxy_set_header</span> X-Forwarded-For <span class="variable">$proxy_add_x_forwarded_for</span>;</span><br></pre></td></tr></table></figure>
+
+<h2 id="Gzip-压缩"><a href="#Gzip-压缩" class="headerlink" title="Gzip 压缩"></a>Gzip 压缩</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">gzip</span> <span class="literal">on</span>;</span><br><span class="line"><span class="attribute">gzip_comp_level</span> <span class="number">6</span>;</span><br><span class="line"><span class="attribute">gzip_min_length</span> <span class="number">2k</span>;</span><br><span class="line"><span class="attribute">gzip_types</span> text/plain application/javascript text/css application/json image/jpeg image/png;</span><br><span class="line"><span class="attribute">gzip_vary</span> <span class="literal">on</span>;</span><br></pre></td></tr></table></figure>
+
+<h2 id="HTTPS-SSL（简略）"><a href="#HTTPS-SSL（简略）" class="headerlink" title="HTTPS &#x2F; SSL（简略）"></a>HTTPS &#x2F; SSL（简略）</h2><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="attribute">listen</span> <span class="number">443</span> ssl;</span><br><span class="line">    <span class="attribute">server_name</span> www.example.com;</span><br><span class="line">    <span class="attribute">ssl_certificate</span>     /etc/nginx/certs/example.crt;</span><br><span class="line">    <span class="attribute">ssl_certificate_key</span> /etc/nginx/certs/example.key;</span><br><span class="line">    <span class="attribute">ssl_protocols</span> TLSv1.<span class="number">2</span> TLSv1.<span class="number">3</span>;</span><br><span class="line">&#125;</span><br><span class="line"><span class="section">server</span> &#123;</span><br><span class="line">    <span class="attribute">listen</span> <span class="number">80</span>;</span><br><span class="line">    <span class="attribute">server_name</span> www.example.com;</span><br><span class="line">    <span class="attribute">return</span> <span class="number">301</span> https://<span class="variable">$server_name</span><span class="variable">$request_uri</span>;   <span class="comment"># HTTP 强制跳 HTTPS</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="验证与排错"><a href="#验证与排错" class="headerlink" title="&#x3D;&#x3D;验证与排错&#x3D;&#x3D;"></a>&#x3D;&#x3D;验证与排错&#x3D;&#x3D;</h1><p> 改配置务必先校验语法（材料里常用 nginx -s reload，强烈建议先 -t）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">nginx -t                       <span class="comment"># 容器外若装了 nginx 可直接用；容器内用 docker exec my-nginx nginx -t</span></span><br><span class="line">docker <span class="built_in">exec</span> my-nginx nginx -t  <span class="comment"># 容器部署时校验</span></span><br><span class="line">docker <span class="built_in">exec</span> my-nginx nginx -s reload   <span class="comment"># 校验通过后热加载</span></span><br></pre></td></tr></table></figure>
+
+<p> 排错清单：<br>   容器没起来：docker ps &#x2F; docker logs my-nginx 看报错；多半是端口冲突或配置挂载路径不对。<br>   访问不通：检查对应端口防火墙是否放行（80&#x2F;81&#x2F;8081&#x2F;8082&#x2F;9000），以及宿主机端口是否被占用。<br>   负载不生效：确认两台后端 html 是否真的不同、upstream 地址是否可达、weight 是否按预期。<br>   PHP 不解析 &#x2F; File not found：检查 php-fpm 是否运行、fastcgi_pass 地址是否可达、SCRIPT_FILENAME 是否正确、root 是否指向 PHP 文件所在目录。<br>   root&#x2F;alias 404：alias 路径末尾漏写 &#x2F; 是常见坑；root 与 alias 拼接规则不同，按需选择。<br>   想看转发效果：在 location 里加 add_header 或查 access_log，确认请求确实到了后端。</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/nginx/" rel="tag"># nginx</a>
+              <a href="/tags/php/" rel="tag"># php</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/04/25/github%E6%90%AD%E5%8D%9A%E5%AE%A2%E6%80%BB%E7%BB%93/" rel="prev" title="github搭博客总结">
+                  <i class="fa fa-angle-left"></i> github搭博客总结
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/07/07/prometheus%E5%92%8Cgrafana/" rel="next" title="prometheus和grafana搭建">
+                  prometheus和grafana搭建 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">kezi</span>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>
