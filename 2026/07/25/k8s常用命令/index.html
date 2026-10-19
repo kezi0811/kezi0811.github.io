@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"example.com","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.28.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":"mac","show_result":true},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="本文整理 Kubernetes 日常运维中最常用的 kubectl 命令，覆盖资源查看、进入容器、日志与详情排查、资源删除等高频场景，并附一份高频补充命令清单，方便随用随查。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="k8s常用命令">
+<meta property="og:url" content="http://example.com/2026/07/25/k8s%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/index.html">
+<meta property="og:site_name" content="Kezi的技术笔记">
+<meta property="og:description" content="本文整理 Kubernetes 日常运维中最常用的 kubectl 命令，覆盖资源查看、进入容器、日志与详情排查、资源删除等高频场景，并附一份高频补充命令清单，方便随用随查。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-07-24T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-08-15T03:39:00.343Z">
+<meta property="article:author" content="kezi">
+<meta property="article:tag" content="k8s常用命令">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="http://example.com/2026/07/25/k8s%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"http://example.com/2026/07/25/k8s%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/","path":"2026/07/25/k8s常用命令/","title":"k8s常用命令"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>k8s常用命令 | Kezi的技术笔记</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Kezi的技术笔记</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%8E%B7%E5%8F%96%E8%B5%84%E6%BA%90%EF%BC%88Pod-%E5%90%84%E7%B1%BB%E5%AF%B9%E8%B1%A1%EF%BC%89"><span class="nav-number">1.</span> <span class="nav-text">获取资源（Pod &#x2F; 各类对象）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%BF%9B%E5%85%A5%E5%AE%B9%E5%99%A8%E6%89%A7%E8%A1%8C%E5%91%BD%E4%BB%A4"><span class="nav-number">2.</span> <span class="nav-text">进入容器执行命令</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9F%A5%E7%9C%8B%E5%AD%97%E6%AE%B5%E8%AF%B4%E6%98%8E%EF%BC%88API-%E6%96%87%E6%A1%A3%EF%BC%89"><span class="nav-number">3.</span> <span class="nav-text">查看字段说明（API 文档）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9F%A5%E7%9C%8B%E5%AE%B9%E5%99%A8%E6%97%A5%E5%BF%97"><span class="nav-number">4.</span> <span class="nav-text">查看容器日志</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9F%A5%E7%9C%8B%E8%B5%84%E6%BA%90%E8%AF%A6%E6%83%85"><span class="nav-number">5.</span> <span class="nav-text">查看资源详情</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%88%A0%E9%99%A4%E8%B5%84%E6%BA%90"><span class="nav-number">6.</span> <span class="nav-text">删除资源</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%A1%A5%E5%85%85%E9%AB%98%E9%A2%91%E5%91%BD%E4%BB%A4"><span class="nav-number">7.</span> <span class="nav-text">补充高频命令</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2026/07/25/k8s%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="kezi">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Kezi的技术笔记">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="k8s常用命令 | Kezi的技术笔记">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          k8s常用命令
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-07-25 00:00:00" itemprop="dateCreated datePublished" datetime="2026-07-25T00:00:00+08:00">2026-07-25</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>本文整理 Kubernetes 日常运维中最常用的 <code>kubectl</code> 命令，覆盖资源查看、进入容器、日志与详情排查、资源删除等高频场景，并附一份高频补充命令清单，方便随用随查。</p>
+<span id="more"></span>
+
+<h2 id="获取资源（Pod-各类对象）"><a href="#获取资源（Pod-各类对象）" class="headerlink" title="获取资源（Pod &#x2F; 各类对象）"></a>获取资源（Pod &#x2F; 各类对象）</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl get pod</span><br></pre></td></tr></table></figure>
+
+<p>常用选项：</p>
+<ul>
+<li><code>-A</code> &#x2F; <code>--all-namespaces</code>：查看所有命名空间的资源</li>
+<li><code>-n &lt;namespace&gt;</code>：指定命名空间，默认 <code>default</code>；集群核心组件多运行在 <code>kube-system</code></li>
+<li><code>--show-labels</code>：显示资源携带的标签</li>
+<li><code>-l key=value</code>：按标签筛选资源（也可只写 <code>key</code>）</li>
+<li><code>-o wide</code>：输出详细信息，包括 Pod IP、所在节点等</li>
+<li><code>-w</code>：实时监视资源对象的变化（类似 <code>watch</code>）</li>
+</ul>
+<h2 id="进入容器执行命令"><a href="#进入容器执行命令" class="headerlink" title="进入容器执行命令"></a>进入容器执行命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl <span class="built_in">exec</span> -it &lt;podName&gt; -c &lt;cName&gt; -- &lt;<span class="built_in">command</span>&gt;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>-it</code>：分配交互式终端（进入容器排错必备）</li>
+<li><code>-c &lt;cName&gt;</code>：指定容器；Pod 内只有一个容器时可省略，默认进入该容器</li>
+</ul>
+<h2 id="查看字段说明（API-文档）"><a href="#查看字段说明（API-文档）" class="headerlink" title="查看字段说明（API 文档）"></a>查看字段说明（API 文档）</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl explain pod.spec</span><br></pre></td></tr></table></figure>
+
+<p>查看某资源字段的官方说明，可逐级下钻，例如 <code>kubectl explain pod.spec.containers</code>。写 YAML 不确定字段时很实用。</p>
+<h2 id="查看容器日志"><a href="#查看容器日志" class="headerlink" title="查看容器日志"></a>查看容器日志</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl logs &lt;podName&gt; -c &lt;cName&gt;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>-c &lt;cName&gt;</code>：多容器 Pod 中指定容器</li>
+<li>加 <code>-f</code> 可实时跟踪日志（类似 <code>tail -f</code>）</li>
+</ul>
+<h2 id="查看资源详情"><a href="#查看资源详情" class="headerlink" title="查看资源详情"></a>查看资源详情</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl describe pod &lt;podName&gt;</span><br></pre></td></tr></table></figure>
+
+<p>输出事件（Events）、状态、关联资源等详细信息，是定位 Pod 起不来、镜像拉取失败等问题的首选命令。</p>
+<h2 id="删除资源"><a href="#删除资源" class="headerlink" title="删除资源"></a>删除资源</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl delete &lt;kindName&gt; &lt;objName&gt;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>--all</code>：删除当前命名空间下该类型的所有资源对象</li>
+<li>跨命名空间批量删除需额外加 <code>-A</code></li>
+</ul>
+<h2 id="补充高频命令"><a href="#补充高频命令" class="headerlink" title="补充高频命令"></a>补充高频命令</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">kubectl apply -f &lt;file.yaml&gt;          <span class="comment"># 声明式创建/更新资源（最常用）</span></span><br><span class="line">kubectl create -f &lt;file.yaml&gt;         <span class="comment"># 命令式创建，资源已存在会报错</span></span><br><span class="line">kubectl get nodes                     <span class="comment"># 查看集群节点及状态（Ready/NotReady）</span></span><br><span class="line">kubectl get ns                        <span class="comment"># 查看命名空间</span></span><br><span class="line">kubectl cluster-info                  <span class="comment"># 查看集群控制面访问地址</span></span><br><span class="line">kubectl scale deploy &lt;name&gt; --replicas=3   <span class="comment"># 手动扩缩容</span></span><br><span class="line">kubectl rollout restart deploy &lt;name&gt;      <span class="comment"># 滚动重启 Deployment</span></span><br><span class="line">kubectl rollout status deploy &lt;name&gt;       <span class="comment"># 查看滚动更新状态</span></span><br><span class="line">kubectl port-forward &lt;pod&gt; 8080:80         <span class="comment"># 本地端口转发，便于临时访问</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>提示：以上命令默认作用于 <code>default</code> 命名空间，操作其他命名空间时记得加 <code>-n &lt;namespace&gt;</code>。</p>
+</blockquote>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/k8s%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/" rel="tag"># k8s常用命令</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/07/08/k8s%E4%B8%80%E4%B8%BB%E4%B8%A4%E4%BB%8E%E9%83%A8%E7%BD%B2/" rel="prev" title="k8s一主两从部署">
+                  <i class="fa fa-angle-left"></i> k8s一主两从部署
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/10/19/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/" rel="next" title="k8s运维项目实战">
+                  k8s运维项目实战 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">kezi</span>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>

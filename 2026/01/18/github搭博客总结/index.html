@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#222" media="(prefers-color-scheme: dark)"><meta name="generator" content="Hexo 8.1.2">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" integrity="sha256-VHqXKFhhMxcpubYf9xiWdCiojEbY9NexQ4jh8AxbvcM=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"example.com","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.28.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":"mac","show_result":true},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
+
+    <meta name="description" content="本文记录从 0 开始使用 Hexo + NexT 主题搭建 GitHub Pages 个人博客的完整流程，包括 Git &#x2F; Node.js 环境安装、Hexo 初始化、NexT 主题部署、站点基础配置，以及推送至 GitHub Pages 的常用命令。适合完全没接触过静态博客的同学照着一步步走。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="github搭博客总结">
+<meta property="og:url" content="http://example.com/2026/01/18/github%E6%90%AD%E5%8D%9A%E5%AE%A2%E6%80%BB%E7%BB%93/index.html">
+<meta property="og:site_name" content="Kezi的技术笔记">
+<meta property="og:description" content="本文记录从 0 开始使用 Hexo + NexT 主题搭建 GitHub Pages 个人博客的完整流程，包括 Git &#x2F; Node.js 环境安装、Hexo 初始化、NexT 主题部署、站点基础配置，以及推送至 GitHub Pages 的常用命令。适合完全没接触过静态博客的同学照着一步步走。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-01-17T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-08-15T03:38:55.543Z">
+<meta property="article:author" content="kezi">
+<meta property="article:tag" content="GitHub博客搭建">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="http://example.com/2026/01/18/github%E6%90%AD%E5%8D%9A%E5%AE%A2%E6%80%BB%E7%BB%93/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"http://example.com/2026/01/18/github%E6%90%AD%E5%8D%9A%E5%AE%A2%E6%80%BB%E7%BB%93/","path":"2026/01/18/github搭博客总结/","title":"github搭博客总结"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>github搭博客总结 | Kezi的技术笔记</title>
+  
+
+
+
+
+
+
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous" defer></script>
+<script src="/js/utils.js" defer></script><script src="/js/motion.js" defer></script><script src="/js/sidebar.js" defer></script><script src="/js/next-boot.js" defer></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/hexo-generator-searchdb/1.5.0/search.js" integrity="sha256-xFC6PJ82SL9b3WkGjFavNiA9gm5z6UBxWPiu4CYjptg=" crossorigin="anonymous" defer></script>
+<script src="/js/third-party/search/local-search.js" defer></script>
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Kezi的技术笔记</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+      <div class="search-header">
+        <span class="search-icon">
+          <i class="fa fa-search"></i>
+        </span>
+        <div class="search-input-container">
+          <input autocomplete="off" autocapitalize="off" maxlength="80"
+                placeholder="搜索..." spellcheck="false"
+                type="search" class="search-input">
+        </div>
+        <span class="popup-btn-close" role="button">
+          <i class="fa fa-times-circle"></i>
+        </span>
+      </div>
+      <div class="search-result-container">
+        <div class="search-result-icon">
+          <i class="fa fa-spinner fa-pulse fa-5x"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E7%BD%AE%E7%8E%AF%E5%A2%83%E5%AE%89%E8%A3%85%E8%AF%B4%E6%98%8E"><span class="nav-number">1.</span> <span class="nav-text">前置环境安装说明</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%A8%E5%B1%80%E5%AE%89%E8%A3%85-Hexo-CLI"><span class="nav-number">1.1.</span> <span class="nav-text">全局安装 Hexo CLI</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%94%9F%E6%88%90-GitHub-SSH-%E5%AF%86%E9%92%A5"><span class="nav-number">1.2.</span> <span class="nav-text">生成 GitHub SSH 密钥</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%B5%8B%E8%AF%95-SSH-%E8%BF%9E%E9%80%9A%E6%80%A7"><span class="nav-number">1.3.</span> <span class="nav-text">测试 SSH 连通性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E9%85%8D%E7%BD%AE%E5%85%A8%E5%B1%80-Git-%E8%B4%A6%E5%8F%B7%E4%BF%A1%E6%81%AF"><span class="nav-number">1.4.</span> <span class="nav-text">配置全局 Git 账号信息</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%88%9D%E5%A7%8B%E5%8C%96%E5%8D%9A%E5%AE%A2"><span class="nav-number">2.</span> <span class="nav-text">初始化博客</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Hexo-%E5%9F%BA%E7%A1%80%E6%8C%87%E4%BB%A4"><span class="nav-number">3.</span> <span class="nav-text">Hexo 基础指令</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%83%A8%E7%BD%B2-NexT-%E4%B8%BB%E9%A2%98"><span class="nav-number">4.</span> <span class="nav-text">部署 NexT 主题</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BF%AE%E6%94%B9%E7%AB%99%E7%82%B9%E5%9F%BA%E7%A1%80%E9%85%8D%E7%BD%AE"><span class="nav-number">5.</span> <span class="nav-text">修改站点基础配置</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E9%83%A8%E7%BD%B2%E5%88%B0-GitHub"><span class="nav-number">6.</span> <span class="nav-text">部署到 GitHub</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BC%96%E5%86%99%E5%B9%B6%E5%8F%91%E5%B8%83%E5%8D%9A%E5%AE%A2"><span class="nav-number">7.</span> <span class="nav-text">编写并发布博客</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%AE%8C%E6%95%B4%E6%B5%81%E7%A8%8B%E9%80%9F%E6%9F%A5"><span class="nav-number">8.</span> <span class="nav-text">常用完整流程速查</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2026/01/18/github%E6%90%AD%E5%8D%9A%E5%AE%A2%E6%80%BB%E7%BB%93/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="kezi">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Kezi的技术笔记">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="github搭博客总结 | Kezi的技术笔记">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          github搭博客总结
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+
+      <time title="创建时间：2026-01-18 00:00:00" itemprop="dateCreated datePublished" datetime="2026-01-18T00:00:00+08:00">2026-01-18</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>本文记录从 0 开始使用 Hexo + NexT 主题搭建 GitHub Pages 个人博客的完整流程，包括 Git &#x2F; Node.js 环境安装、Hexo 初始化、NexT 主题部署、站点基础配置，以及推送至 GitHub Pages 的常用命令。适合完全没接触过静态博客的同学照着一步步走。</p>
+<span id="more"></span>
+
+<h1 id="前置环境安装说明"><a href="#前置环境安装说明" class="headerlink" title="前置环境安装说明"></a>前置环境安装说明</h1><p>安装 Git：官网 git-scm.com，按需勾选桌面快捷方式，其余默认安装即可。<br>安装 Node.js：nodejs.org&#x2F;en&#x2F;download，建议选 LTS 版本，全部默认选项安装。</p>
+<p>安装完成后验证版本（能正常输出版本号即安装成功）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">git --version</span><br><span class="line">node -v</span><br><span class="line">npm -v</span><br></pre></td></tr></table></figure>
+
+<h2 id="全局安装-Hexo-CLI"><a href="#全局安装-Hexo-CLI" class="headerlink" title="全局安装 Hexo CLI"></a>全局安装 Hexo CLI</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm install -g hexo-cli</span><br></pre></td></tr></table></figure>
+
+<p>说明：hexo-cli 是命令行工具，装好后才能在任意目录使用 <code>hexo</code> 命令。</p>
+<h2 id="生成-GitHub-SSH-密钥"><a href="#生成-GitHub-SSH-密钥" class="headerlink" title="生成 GitHub SSH 密钥"></a>生成 GitHub SSH 密钥</h2><p>将命令中的邮箱替换为你的 GitHub 注册邮箱，执行后连续三次回车（默认生成到 ~&#x2F;.ssh&#x2F;id_rsa）。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh-keygen -t rsa -C <span class="string">&quot;你的github注册邮箱&quot;</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>提示：新版 OpenSSH 推荐用 ed25519 算法（<code>ssh-keygen -t ed25519 -C &quot;邮箱&quot;</code>，对应公钥为 <code>id_ed25519.pub</code>）；老系统不支持时再用上面的 rsa。</p>
+</blockquote>
+<p>查看并复制公钥内容，粘贴到 GitHub → Settings → SSH and GPG keys：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">ls</span> ~/.ssh</span><br><span class="line"><span class="built_in">cat</span> ~/.ssh/id_rsa.pub</span><br></pre></td></tr></table></figure>
+
+<h2 id="测试-SSH-连通性"><a href="#测试-SSH-连通性" class="headerlink" title="测试 SSH 连通性"></a>测试 SSH 连通性</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh -T git@github.com</span><br></pre></td></tr></table></figure>
+
+<p>首次连接会提示确认指纹，输入 <code>yes</code> 即可；看到 <code>You&#39;ve successfully authenticated</code> 表示连通正常。</p>
+<h2 id="配置全局-Git-账号信息"><a href="#配置全局-Git-账号信息" class="headerlink" title="配置全局 Git 账号信息"></a>配置全局 Git 账号信息</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git config --global user.name <span class="string">&quot;liyunchen&quot;</span></span><br><span class="line">git config --global user.email <span class="string">&quot;xxx@163.com&quot;</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="初始化博客"><a href="#初始化博客" class="headerlink" title="初始化博客"></a>初始化博客</h1><blockquote>
+<p>目标文件夹必须为空（或不存在），<code>hexo init</code> 会在该目录写入脚手架并自动执行 <code>npm install</code>。</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">hexo init myblog</span><br><span class="line"><span class="built_in">cd</span> myblog</span><br></pre></td></tr></table></figure>
+
+<p>安装部署插件（用于以 git 方式推送到 GitHub，需在 init 之后执行，否则目录非空会导致 init 失败）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm install hexo-deployer-git --save</span><br></pre></td></tr></table></figure>
+
+<p>本地生成一次，确认环境正常：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo g</span><br></pre></td></tr></table></figure>
+
+<h1 id="Hexo-基础指令"><a href="#Hexo-基础指令" class="headerlink" title="Hexo 基础指令"></a>Hexo 基础指令</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">hexo new <span class="string">&quot;postName&quot;</span>           <span class="comment"># 新建文章</span></span><br><span class="line">hexo new page <span class="string">&quot;pageName&quot;</span>      <span class="comment"># 新建独立页面</span></span><br><span class="line">hexo g / generate             <span class="comment"># 编译静态文件至 public</span></span><br><span class="line">hexo s / server               <span class="comment"># 本地预览，默认 4000 端口，Ctrl+C 关闭</span></span><br><span class="line">hexo d / deploy               <span class="comment"># 部署到远端仓库</span></span><br><span class="line">hexo clean                    <span class="comment"># 清理缓存（public 与 db.json）</span></span><br><span class="line">hexo <span class="built_in">help</span>                     <span class="comment"># 查看帮助文档</span></span><br><span class="line">hexo version                  <span class="comment"># 查看 Hexo 版本</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="部署-NexT-主题"><a href="#部署-NexT-主题" class="headerlink" title="部署 NexT 主题"></a>部署 NexT 主题</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/next-theme/hexo-theme-next themes/next</span><br></pre></td></tr></table></figure>
+
+<p>将博客根目录 <code>_config.yml</code> 的 <code>theme</code> 字段改为 <code>next</code>：</p>
+<p>方式一（Git Bash &#x2F; Linux &#x2F; macOS）：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sed -i <span class="string">&#x27;s/theme: landscape/theme: next/&#x27;</span> _config.yml</span><br></pre></td></tr></table></figure>
+
+<p>方式二（Windows PowerShell &#x2F; 手动编辑）：用记事本打开 <code>_config.yml</code>，把 <code>theme: landscape</code> 改为 <code>theme: next</code>。</p>
+<p>清理缓存并本地预览：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo clean &amp;&amp; hexo s</span><br></pre></td></tr></table></figure>
+
+<p>浏览器打开 <a target="_blank" rel="noopener" href="http://localhost:4000/">http://localhost:4000</a> 查看效果。</p>
+<h1 id="修改站点基础配置"><a href="#修改站点基础配置" class="headerlink" title="修改站点基础配置"></a>修改站点基础配置</h1><p>编辑博客根目录 <code>_config.yml</code> 的 Site 块：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Site</span></span><br><span class="line"><span class="attr">title:</span> <span class="string">个人学习记录</span></span><br><span class="line"><span class="attr">subtitle:</span> <span class="string">&#x27;&#x27;</span></span><br><span class="line"><span class="attr">description:</span> <span class="string">&#x27;&#x27;</span></span><br><span class="line"><span class="attr">keywords:</span></span><br><span class="line"><span class="attr">author:</span> <span class="string">kezi</span></span><br><span class="line"><span class="attr">language:</span> <span class="string">zh-CN</span></span><br><span class="line"><span class="attr">timezone:</span> <span class="string">Asia/Shanghai</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="部署到-GitHub"><a href="#部署到-GitHub" class="headerlink" title="部署到 GitHub"></a>部署到 GitHub</h1><ol>
+<li>在 GitHub 新建仓库（New repository），命名为 <code>用户名.github.io</code>，勾选 Add a README file，点击 Create repository。</li>
+<li>编辑博客根目录 <code>_config.yml</code>，在末尾 deploy 块加入（repo 改成自己的，branch 按实际填 main 或 master）：</li>
+</ol>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">deploy:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">git</span></span><br><span class="line">  <span class="attr">repo:</span> <span class="string">git@github.com:liyunchen/liyunchen.github.io.git</span></span><br><span class="line">  <span class="attr">branch:</span> <span class="string">main</span></span><br></pre></td></tr></table></figure>
+
+<ol start="3">
+<li>部署推送：</li>
+</ol>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo d</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>首次部署会克隆仓库并上传，耗时稍长；之后每次 <code>hexo d</code> 只做增量更新。</p>
+</blockquote>
+<h1 id="编写并发布博客"><a href="#编写并发布博客" class="headerlink" title="编写并发布博客"></a>编写并发布博客</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo new <span class="string">&quot;新文章名字&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>会在 <code>博客根目录/source/_posts/</code> 生成同名 <code>.md</code> 文件，直接记事本编辑即可。写完发布：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">hexo g</span><br><span class="line">hexo d</span><br></pre></td></tr></table></figure>
+
+<h1 id="常用完整流程速查"><a href="#常用完整流程速查" class="headerlink" title="常用完整流程速查"></a>常用完整流程速查</h1><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">hexo clean &amp;&amp; hexo g &amp;&amp; hexo d        <span class="comment"># 重新生成并部署</span></span><br><span class="line">hexo new <span class="string">&quot;标题&quot;</span> &amp;&amp; hexo g &amp;&amp; hexo d   <span class="comment"># 新建文章并发布</span></span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/GitHub%E5%8D%9A%E5%AE%A2%E6%90%AD%E5%BB%BA/" rel="tag"># GitHub博客搭建</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+            </div>
+            <div class="post-nav-item">
+                <a href="/2026/02/22/nginx%E5%92%8Cphp/" rel="next" title="nginx和php">
+                  nginx和php <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">kezi</span>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+</body>
+</html>
