@@ -80,113 +80,6 @@
       </tags>
   </entry>
   <entry>
-    <title>k8s一主两从部署</title>
-    <url>/2026/07/08/k8s%E4%B8%80%E4%B8%BB%E4%B8%A4%E4%BB%8E%E9%83%A8%E7%BD%B2/</url>
-    <content><![CDATA[<p>本文记录基于 Rocky Linux 9.8 使用 kubeadm 部署 Kubernetes 1.29 一主两从集群的完整流程，涵盖环境规划、系统初始化（网卡&#x2F;软件源&#x2F;防火墙&#x2F;Selinux&#x2F;swap&#x2F;hosts）、Docker 与 cri-docker 安装、kubeadm 初始化与节点加入，以及 Calico 网络插件部署，实现集群网络扁平化。</p>
-<span id="more"></span>
-
-<h1 id="环境规划"><a href="#环境规划" class="headerlink" title="&#x3D;&#x3D;环境规划&#x3D;&#x3D;"></a>&#x3D;&#x3D;环境规划&#x3D;&#x3D;</h1><p> 宿主机 VMnet1 配置为 192.168.66.52。<br> 统一 Rocky Linux 9.8 最小化安装；用 iKuai 32 位模拟生产环境路由器。</p>
-<p> 节点规划：<br>   iKuai：192.168.66.200，mem&#x3D;1GB，disk&#x3D;8GB<br>   master：192.168.66.11（RL-1），cpu&#x3D;4（2,2），mem&#x3D;4GB，nic&gt;&#x3D;1，disk&#x3D;100GB<br>   node1：192.168.66.12（RL-2）<br>   node2：192.168.66.13（RL-3）<br> 自定义分区：&#x2F;boot 800MB、&#x2F;swap 4GB、其余给 &#x2F;。<br> 网卡：第一块仅主机模式，第二块 NAT（后续删掉 NAT）。<br> iKuai 默认账号密码 admin &#x2F; admin。</p>
-<h1 id="系统初始化"><a href="#系统初始化" class="headerlink" title="&#x3D;&#x3D;系统初始化&#x3D;&#x3D;"></a>&#x3D;&#x3D;系统初始化&#x3D;&#x3D;</h1><h2 id="网卡配置静态（Rocky-9-x）"><a href="#网卡配置静态（Rocky-9-x）" class="headerlink" title="网卡配置静态（Rocky 9.x）"></a>网卡配置静态（Rocky 9.x）</h2><p> 配置文件路径：&#x2F;etc&#x2F;NetworkManager&#x2F;system-connections&#x2F;ens数字.nmconnection<br> 字段说明：method&#x3D;auto&#x2F;manual；address1&#x3D;ipaddress,getway</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">systemctl restart NetworkManager</span><br></pre></td></tr></table></figure>
-<p> 之后用 Xshell 连接。</p>
-<h2 id="更换软件源"><a href="#更换软件源" class="headerlink" title="更换软件源"></a>更换软件源</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sed -e <span class="string">&#x27;s|^mirrorlist=|#mirrorlist=|g&#x27;</span> \</span><br><span class="line">    -e <span class="string">&#x27;s|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.aliyun.com/rockylinux|g&#x27;</span> \</span><br><span class="line">    -i.bak \</span><br><span class="line">    /etc/yum.repos.d/[Rr]ocky*.repo</span><br><span class="line"></span><br><span class="line">dnf makecache   <span class="comment"># 建立缓存</span></span><br></pre></td></tr></table></figure>
-
-<h2 id="改-firewalld-为-iptables，统一关闭-SELinux"><a href="#改-firewalld-为-iptables，统一关闭-SELinux" class="headerlink" title="改 firewalld 为 iptables，统一关闭 SELinux"></a>改 firewalld 为 iptables，统一关闭 SELinux</h2><p> firewalld 和 iptables 看你自己熟悉哪个，这里统一用 iptables。</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">systemctl stop firewalld</span><br><span class="line">systemctl <span class="built_in">disable</span> firewalld</span><br><span class="line"></span><br><span class="line">yum -y install iptables-services</span><br><span class="line">systemctl start iptables</span><br><span class="line">iptables -F</span><br><span class="line">systemctl <span class="built_in">enable</span> iptables</span><br><span class="line">service iptables save</span><br></pre></td></tr></table></figure>
-
-<h2 id="禁用-SELinux"><a href="#禁用-SELinux" class="headerlink" title="禁用 SELinux"></a>禁用 SELinux</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">setenforce 0</span><br><span class="line">sed -i <span class="string">&quot;s/SELINUX=enforcing/SELINUX=disabled/g&quot;</span> /etc/selinux/config</span><br><span class="line">grubby --update-kernel ALL --args selinux=0</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看是否禁用</span></span><br><span class="line">grubby --info DEFAULT</span><br><span class="line"></span><br><span class="line"><span class="comment"># 回滚内核层禁用操作</span></span><br><span class="line">grubby --update-kernel ALL --remove-args selinux</span><br></pre></td></tr></table></figure>
-
-<h2 id="设置时区"><a href="#设置时区" class="headerlink" title="设置时区"></a>设置时区</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">timedatectl set-timezone Asia/Shanghai</span><br></pre></td></tr></table></figure>
-
-<h2 id="配置网关与-DNS"><a href="#配置网关与-DNS" class="headerlink" title="配置网关与 DNS"></a>配置网关与 DNS</h2><p> 编辑 ens160（示例），手动配 IP、网关、DNS：</p>
-<figure class="highlight ini"><table><tr><td class="code"><pre><span class="line"><span class="section">[connection]</span></span><br><span class="line"><span class="attr">id</span>=ens160</span><br><span class="line"><span class="attr">uuid</span>=cb0afec5-<span class="number">7</span>cf8-<span class="number">37</span>a3-<span class="number">92</span>c7-fe1c761f40e0</span><br><span class="line"><span class="attr">type</span>=ethernet</span><br><span class="line"><span class="attr">autoconnect-priority</span>=-<span class="number">999</span></span><br><span class="line"><span class="attr">interface-name</span>=ens160</span><br><span class="line"><span class="attr">timestamp</span>=<span class="number">1786005662</span></span><br><span class="line"></span><br><span class="line"><span class="section">[ethernet]</span></span><br><span class="line"></span><br><span class="line"><span class="section">[ipv4]</span></span><br><span class="line"><span class="attr">method</span>=manual</span><br><span class="line"><span class="attr">address1</span>=<span class="number">192.168</span>.<span class="number">66.11</span>/<span class="number">24</span>,<span class="number">192.168</span>.<span class="number">66.200</span></span><br><span class="line"><span class="attr">dns</span>=<span class="number">114.114</span>.<span class="number">114.114</span><span class="comment">;8.8.8.8</span></span><br><span class="line"></span><br><span class="line"><span class="section">[ipv6]</span></span><br><span class="line"><span class="attr">addr-gen-mode</span>=eui64</span><br><span class="line"><span class="attr">method</span>=auto</span><br><span class="line"></span><br><span class="line"><span class="section">[proxy]</span></span><br></pre></td></tr></table></figure>
-
-<p> 编辑 ens192，改成非自动启动（在 [connection] 块添加 autoconnect&#x3D;false）：</p>
-<figure class="highlight ini"><table><tr><td class="code"><pre><span class="line"><span class="section">[connection]</span></span><br><span class="line"><span class="attr">id</span>=ens192</span><br><span class="line"><span class="attr">uuid</span>=<span class="number">9</span>aba7a87-ad21-<span class="number">3668</span>-acb1-<span class="number">05620</span>f9a8047</span><br><span class="line"><span class="attr">type</span>=ethernet</span><br><span class="line"><span class="attr">autoconnect-priority</span>=-<span class="number">999</span></span><br><span class="line"><span class="attr">autoconnect</span>=<span class="literal">false</span></span><br><span class="line"><span class="attr">interface-name</span>=ens192</span><br><span class="line"><span class="attr">timestamp</span>=<span class="number">1786005662</span></span><br><span class="line"></span><br><span class="line"><span class="section">[ethernet]</span></span><br><span class="line"></span><br><span class="line"><span class="section">[ipv4]</span></span><br><span class="line"><span class="attr">method</span>=auto</span><br><span class="line"></span><br><span class="line"><span class="section">[ipv6]</span></span><br><span class="line"><span class="attr">addr-gen-mode</span>=eui64</span><br><span class="line"><span class="attr">method</span>=auto</span><br><span class="line"></span><br><span class="line"><span class="section">[proxy]</span></span><br></pre></td></tr></table></figure>
-
-<p> 重载设备或者重启：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">nmcli d d ens192</span><br><span class="line">nmcli d r ens160</span><br><span class="line">nmcli c r ens160</span><br></pre></td></tr></table></figure>
-
-<h2 id="关闭-swap"><a href="#关闭-swap" class="headerlink" title="关闭 swap"></a>关闭 swap</h2><p> 之所以一开始给它分空间，就是为了告诉你怎么关。</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">swapoff -a   <span class="comment"># 临时</span></span><br><span class="line">sed -i <span class="string">&#x27;s:/dev/mapper/rl‑swap:#/dev/mapper/rl‑swap:g&#x27;</span> /etc/fstab</span><br><span class="line"></span><br><span class="line">free -m   <span class="comment"># 验证</span></span><br></pre></td></tr></table></figure>
-
-<h2 id="修改主机名"><a href="#修改主机名" class="headerlink" title="修改主机名"></a>修改主机名</h2><p> 可用 nmtui 图形改，也可纯命令：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">hostnamectl set-hostname k8s-master01</span><br></pre></td></tr></table></figure>
-<p> 三台分别设为：k8s-master01、k8s-node01、k8s-node02。</p>
-<h2 id="编辑-hosts-文件并发送到-node1-和-node2"><a href="#编辑-hosts-文件并发送到-node1-和-node2" class="headerlink" title="编辑 hosts 文件并发送到 node1 和 node2"></a>编辑 hosts 文件并发送到 node1 和 node2</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vi /etc/hosts</span><br></pre></td></tr></table></figure>
-<figure class="highlight ini"><table><tr><td class="code"><pre><span class="line">127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4</span><br><span class="line">::1         localhost localhost.localdomain localhost6 localhost6.localdomain6</span><br><span class="line"></span><br><span class="line">192.168.66.11 k8s-master01 m1</span><br><span class="line">192.168.66.12 k8s-node01 n1</span><br><span class="line">192.168.66.13 k8s-node02 n2</span><br><span class="line">192.168.66.14 harbor</span><br></pre></td></tr></table></figure>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">scp /etc/hosts root@n1:/etc/hosts</span><br></pre></td></tr></table></figure>
-
-<h2 id="安装-ipvs"><a href="#安装-ipvs" class="headerlink" title="安装 ipvs"></a>安装 ipvs</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">dnf install -y ipvsadm</span><br></pre></td></tr></table></figure>
-
-<h2 id="开启路由转发"><a href="#开启路由转发" class="headerlink" title="开启路由转发"></a>开启路由转发</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;net.ipv4.ip_forward=1&#x27;</span> &gt;&gt; /etc/sysctl.conf</span><br><span class="line">sysctl -p   <span class="comment"># 刷新生效</span></span><br></pre></td></tr></table></figure>
-
-<h2 id="加载-bridge-模块（可选，为后期网络测试）"><a href="#加载-bridge-模块（可选，为后期网络测试）" class="headerlink" title="加载 bridge 模块（可选，为后期网络测试）"></a>加载 bridge 模块（可选，为后期网络测试）</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">dnf install -y epel-release</span><br><span class="line">dnf install -y bridge-utils</span><br><span class="line"></span><br><span class="line">modprobe br_netfilter</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;br_netfilter&#x27;</span> &gt;&gt; /etc/modules-load.d/bridge.conf</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;net.bridge.bridge-nf-call-iptables=1&#x27;</span> &gt;&gt; /etc/sysctl.conf</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;net.bridge.bridge-nf-call-ip6tables=1&#x27;</span> &gt;&gt; /etc/sysctl.conf</span><br><span class="line"></span><br><span class="line">sysctl -p</span><br></pre></td></tr></table></figure>
-
-<h1 id="安装-Docker"><a href="#安装-Docker" class="headerlink" title="&#x3D;&#x3D;安装 Docker&#x3D;&#x3D;"></a>&#x3D;&#x3D;安装 Docker&#x3D;&#x3D;</h1><h2 id="添加中科大源"><a href="#添加中科大源" class="headerlink" title="添加中科大源"></a>添加中科大源</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">sudo</span> dnf config-manager --add-repo https://mirrors.ustc.edu.cn/docker-ce/linux/centos/docker-ce.repo</span><br><span class="line"></span><br><span class="line"><span class="built_in">cd</span> /etc/yum.repos.d   <span class="comment"># 验证</span></span><br><span class="line"><span class="built_in">cat</span> docker-ce.repo</span><br><span class="line"></span><br><span class="line"><span class="comment"># 切换中科大源</span></span><br><span class="line">sed -e <span class="string">&#x27;s|download.docker.com|mirrors.ustc.edu.cn/docker-ce|g&#x27;</span> docker-ce.repo &gt; docker-ce-ustc.repo</span><br><span class="line"></span><br><span class="line"><span class="built_in">mv</span> docker-ce.repo docker-ce.repo.back   <span class="comment"># 改成备份文件，让 docker 原生源不生效</span></span><br></pre></td></tr></table></figure>
-
-<h2 id="安装-docker-ce"><a href="#安装-docker-ce" class="headerlink" title="安装 docker-ce"></a>安装 docker-ce</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">dnf install -y docker-ce</span><br></pre></td></tr></table></figure>
-
-<h2 id="配置-daemon"><a href="#配置-daemon" class="headerlink" title="配置 daemon"></a>配置 daemon</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cat</span> &gt; /etc/docker/daemon.json &lt;&lt;<span class="string">EOF</span></span><br><span class="line"><span class="string">&#123;</span></span><br><span class="line"><span class="string">  &quot;data-root&quot;: &quot;/data/docker&quot;,</span></span><br><span class="line"><span class="string">  &quot;exec-opts&quot;: [&quot;native.cgroupdriver=systemd&quot;],</span></span><br><span class="line"><span class="string">  &quot;log-driver&quot;: &quot;json-file&quot;,</span></span><br><span class="line"><span class="string">  &quot;log-opts&quot;: &#123;</span></span><br><span class="line"><span class="string">    &quot;max-size&quot;: &quot;100m&quot;,</span></span><br><span class="line"><span class="string">    &quot;max-file&quot;: &quot;100&quot;</span></span><br><span class="line"><span class="string">  &#125;,</span></span><br><span class="line"><span class="string">  &quot;insecure-registries&quot;: [&quot;harbor.xinxainghf.com&quot;],</span></span><br><span class="line"><span class="string">  &quot;registry-mirrors&quot;: [&quot;https://kfp63jaj.mirror.aliyuncs.com&quot;]</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"><span class="string">EOF</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">mkdir</span> -p /etc/systemd/system/docker.service.d</span><br></pre></td></tr></table></figure>
-
-<p> 重载配置、重启 docker、开机自启：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">systemctl daemon-reload &amp;&amp; systemctl restart docker &amp;&amp; systemctl <span class="built_in">enable</span> docker</span><br><span class="line"></span><br><span class="line">reboot   <span class="comment"># 把之前的配置都落地一下</span></span><br></pre></td></tr></table></figure>
-
-<h1 id="安装-cri-docker"><a href="#安装-cri-docker" class="headerlink" title="&#x3D;&#x3D;安装 cri-docker&#x3D;&#x3D;"></a>&#x3D;&#x3D;安装 cri-docker&#x3D;&#x3D;</h1><p> 这个组件用来翻译 OCI 语言（新的容器基本都是 CRI；之前由 k8s 维护，宣布舍弃 Docker 后，Docker 自己维护了 cri-docker）。</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">wget https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.9/cri-dockerd-0.3.9.amd64.tgz</span><br><span class="line">tar -xf cri-dockerd-0.3.9.amd64.tgz</span><br><span class="line"><span class="built_in">cp</span>/mv cri-dockerd/cri-dockerd /usr/bin/</span><br><span class="line"><span class="built_in">chmod</span> a+x /usr/bin/cri-dockerd</span><br></pre></td></tr></table></figure>
-
-<p> 配置 cri-docker 服务：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cat</span> &lt;&lt;<span class="string">&quot;EOF&quot;</span> &gt; /usr/lib/systemd/system/cri-docker.service</span><br><span class="line">[Unit]</span><br><span class="line">Description=CRI Interface <span class="keyword">for</span> Docker Application Container Engine</span><br><span class="line">Documentation=https://docs.mirantis.com</span><br><span class="line">After=network-online.target firewalld.service docker.service</span><br><span class="line">Wants=network-online.target</span><br><span class="line">Requires=cri-docker.socket</span><br><span class="line">[Service]</span><br><span class="line">Type=notify</span><br><span class="line">ExecStart=/usr/bin/cri-dockerd --network-plugin=cni --pod-infra-container-image=registry.aliyuncs.com/google_containers/pause:3.9</span><br><span class="line">ExecReload=/bin/kill -s HUP <span class="variable">$MAINPID</span></span><br><span class="line">TimeoutSec=0</span><br><span class="line">RestartSec=2</span><br><span class="line">Restart=always</span><br><span class="line">StartLimitBurst=3</span><br><span class="line">StartLimitInterval=60s</span><br><span class="line">LimitNOFILE=infinity</span><br><span class="line">LimitNPROC=infinity</span><br><span class="line">LimitCORE=infinity</span><br><span class="line">TasksMax=infinity</span><br><span class="line">Delegate=<span class="built_in">yes</span></span><br><span class="line">KillMode=process</span><br><span class="line">[Install]</span><br><span class="line">WantedBy=multi-user.target</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
-
-<p> 添加 cri-docker 套接字：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cat</span> &lt;&lt;<span class="string">&quot;EOF&quot;</span> &gt; /usr/lib/systemd/system/cri-docker.socket</span><br><span class="line">[Unit]</span><br><span class="line">Description=CRI Docker Socket <span class="keyword">for</span> the API</span><br><span class="line">PartOf=cri-docker.service</span><br><span class="line"></span><br><span class="line">[Socket]</span><br><span class="line">ListenStream=%t/cri-dockerd.sock</span><br><span class="line">SocketMode=0660</span><br><span class="line">SocketUser=root</span><br><span class="line">SocketGroup=docker</span><br><span class="line"></span><br><span class="line">[Install]</span><br><span class="line">WantedBy=sockets.target</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
-
-<p> 启动对应服务：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl <span class="built_in">enable</span> cri-docker</span><br><span class="line">systemctl start cri-docker</span><br><span class="line">systemctl is-active cri-docker</span><br></pre></td></tr></table></figure>
-
-<h1 id="安装-kubeadm-kubelet-kubectl"><a href="#安装-kubeadm-kubelet-kubectl" class="headerlink" title="&#x3D;&#x3D;安装 kubeadm &#x2F; kubelet &#x2F; kubectl&#x3D;&#x3D;"></a>&#x3D;&#x3D;安装 kubeadm &#x2F; kubelet &#x2F; kubectl&#x3D;&#x3D;</h1><p> 添加 kubeadm yum 源：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cat</span> &lt;&lt;<span class="string">EOF &gt; /etc/yum.repos.d/kubernetes.repo</span></span><br><span class="line"><span class="string">[kubernetes]</span></span><br><span class="line"><span class="string">name=Kubernetes</span></span><br><span class="line"><span class="string">baseurl=https://pkgs.k8s.io/core:/stable:/v1.29/rpm/</span></span><br><span class="line"><span class="string">enabled=1</span></span><br><span class="line"><span class="string">gpgcheck=1</span></span><br><span class="line"><span class="string">gpgkey=https://pkgs.k8s.io/core:/stable:/v1.29/rpm/repodata/repomd.xml.key</span></span><br><span class="line"><span class="string">exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni # 安装的时候需要把这行注释，本意是为了防止自动更新</span></span><br><span class="line"><span class="string">EOF</span></span><br></pre></td></tr></table></figure>
-
-<p> 安装 kubeadm 1.29 版本：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">yum install -y kubelet-1.29.0 kubectl-1.29.0 kubeadm-1.29.0</span><br><span class="line">systemctl <span class="built_in">enable</span> kubelet.service</span><br></pre></td></tr></table></figure>
-
-<p> 课外：为什么不能只靠 docker 来跑 k8s —— docker run –restart&#x3D;always 只是 docker 启动时给容器传达一个启动信息，容器没启动成功也不会继续传达，无法保障组件正常工作，所以需要 kubelet，要给 kubelet.service 自启权限。<br> 启动顺序：linux → docker → cri-docker → kubelet → 其他组件。</p>
-<h1 id="初始化主节点"><a href="#初始化主节点" class="headerlink" title="&#x3D;&#x3D;初始化主节点&#x3D;&#x3D;"></a>&#x3D;&#x3D;初始化主节点&#x3D;&#x3D;</h1><p> 注意：要关闭 swap 和启动 kubelet 才能初始化；如果提示版本没有对齐，就修改 &#x2F;usr&#x2F;lib&#x2F;systemd&#x2F;system&#x2F;cri-docker.service。</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubeadm init --apiserver-advertise-address=192.168.66.11 --image-repository registry.aliyuncs.com/google_containers --kubernetes-version 1.29.0 --service-cidr=10.10.0.0/12 --pod-network-cidr=10.244.0.0/16 --ignore-preflight-errors=all --cri-socket unix:///var/run/cri-dockerd.sock</span><br></pre></td></tr></table></figure>
-
-<p> 必执行授权（主节点做即可）：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> -p <span class="variable">$HOME</span>/.kube</span><br><span class="line"><span class="built_in">cp</span> -i /etc/kubernetes/admin.conf <span class="variable">$HOME</span>/.kube/config</span><br><span class="line"><span class="built_in">chown</span> $(<span class="built_in">id</span> -u):$(<span class="built_in">id</span> -g) <span class="variable">$HOME</span>/.kube/config</span><br></pre></td></tr></table></figure>
-
-<h1 id="加入-worker-节点"><a href="#加入-worker-节点" class="headerlink" title="&#x3D;&#x3D;加入 worker 节点&#x3D;&#x3D;"></a>&#x3D;&#x3D;加入 worker 节点&#x3D;&#x3D;</h1><p> 根据 init 输出内容，在 node1 和 node2 执行：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubeadm <span class="built_in">join</span> 192.168.66.11:6443 --token giioun.pnr09a78da80uh9b \</span><br><span class="line">	--discovery-token-ca-cert-hash sha256:e12ffdcae1f7688fee7958407e5938cd732269697639af0d369cb5ca8793590e --cri-socket unix:///var/run/cri-dockerd.sock</span><br></pre></td></tr></table></figure>
-
-<p> work token 默认 24h 过期，重新申请：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubeadm token create --print-join-command</span><br></pre></td></tr></table></figure>
-
-<h1 id="部署-Calico-网络插件"><a href="#部署-Calico-网络插件" class="headerlink" title="&#x3D;&#x3D;部署 Calico 网络插件&#x3D;&#x3D;"></a>&#x3D;&#x3D;部署 Calico 网络插件&#x3D;&#x3D;</h1><p> 参考文档：<br> <a href="https://docs.tigera.io/calico/latest/getting-started/kubernetes/self-managed-onprem/onpremises">https://docs.tigera.io/calico/latest/getting-started/kubernetes/self-managed-onprem/onpremises</a> （install-calico-with-kubernetes-api-datastore-more-than-50-nodes）</p>
-<p> 下载 calico.zip 并解压：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">unzip calico.zip</span><br></pre></td></tr></table></figure>
-<p> 解压出的内容：calico-images.tar.gz、calico-typha.yaml、calicoctl-linux-amd64、calicoctl.yaml（后面两个目前不用，但以后会用）。</p>
-<p> 解压 calico-images.tar.gz，将内容分发到每个节点（scp -r calico-images root@n1:&#x2F;root&#x2F;）并 load 到 docker：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker load -i calico-cni-v3.26.3.tar</span><br></pre></td></tr></table></figure>
-
-<p> 下载和修改文件内容：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/calico-typha.yaml -o calico.yaml</span><br></pre></td></tr></table></figure>
-<p> 把 CALICO_IPV4POOL_CIDR 指定为 pod 地址。</p>
-<p> 修改为 BGP 模式（关闭 IPIP）：</p>
-<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="comment"># Enable IPIP</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">CALICO_IPV4POOL_IPIP</span></span><br><span class="line">  <span class="attr">value:</span> <span class="string">&quot;Always&quot;</span>   <span class="comment"># 改成 Off</span></span><br></pre></td></tr></table></figure>
-
-<p> 部署文件应用到集群：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubectl apply -f calico-typha.yaml</span><br></pre></td></tr></table></figure>
-
-<p> 等一会，kubectl get node 就能看见都是 Ready；执行 kubectl get pod -A 能看到都已经 Running。</p>
-]]></content>
-      <tags>
-        <tag>k8s一主两从部署</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>k8s常用命令</title>
     <url>/2026/07/25/k8s%E5%B8%B8%E7%94%A8%E5%91%BD%E4%BB%A4/</url>
     <content><![CDATA[<p>本文整理 Kubernetes 日常运维中最常用的 <code>kubectl</code> 命令，覆盖资源查看、进入容器、日志与详情排查、资源删除等高频场景，并附一份高频补充命令清单，方便随用随查。</p>
@@ -235,73 +128,6 @@
 ]]></content>
       <tags>
         <tag>k8s常用命令</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>prometheus和grafana搭建</title>
-    <url>/2026/05/20/prometheus%E5%92%8Cgrafana/</url>
-    <content><![CDATA[<p>本文记录基于 CentOS 7 使用 Prometheus + node_exporter + Grafana 搭建主机监控的完整流程，包含服务端&#x2F;监控端部署、systemd 守护进程、抓取目标配置、防火墙与 SELinux 准备、Grafana 数据源与仪表盘接入，以及配置语法检查与常见排错。</p>
-<span id="more"></span>
-
-<h1 id="监控原理概述"><a href="#监控原理概述" class="headerlink" title="&#x3D;&#x3D;监控原理概述&#x3D;&#x3D;"></a>&#x3D;&#x3D;监控原理概述&#x3D;&#x3D;</h1><p> Prometheus 监控体系分为两部分：<br>  服务端 Prometheus（prometheus-2.49.1.linux-amd64.tar.gz）：负责定时抓取（scrape）各目标暴露的指标，并存储、提供查询与告警。<br>  监控端 node_exporter（node_exporter-1.7.0.linux-amd64.tar.gz）：部署在被监控主机上，对外暴露 &#x2F;metrics 指标接口。</p>
-<p> 原理：node_exporter 在主机上启动后监听 9100 端口，持续采集 CPU、内存、磁盘、网络等系统指标；Prometheus 按配置的周期主动去这些目标的 &#x2F;metrics 拉取数据，从而实现监控。Grafana 再接入 Prometheus 作为数据源，把指标画成图表。</p>
-<h1 id="版本与端口说明"><a href="#版本与端口说明" class="headerlink" title="&#x3D;&#x3D;版本与端口说明&#x3D;&#x3D;"></a>&#x3D;&#x3D;版本与端口说明&#x3D;&#x3D;</h1><p> 组件版本：<br>  Prometheus：2.49.1<br>  node_exporter：1.7.0<br>  Grafana：oss 最新</p>
-<p> 涉及端口（部署前需在防火墙放行）：<br>  9090：Prometheus 服务端 Web&#x2F;API<br>  9100：node_exporter 指标接口<br>  3000：Grafana Web</p>
-<p> 注意事项：<br>  Grafana 通过 HTTP 调用 Prometheus 的 API（默认 9090）拉数据，因此若开启了 SELinux，需关闭或放通相关策略，否则 Grafana 连不上 Prometheus 的 API。</p>
-<h1 id="防火墙与-SELinux-准备"><a href="#防火墙与-SELinux-准备" class="headerlink" title="&#x3D;&#x3D;防火墙与 SELinux 准备&#x3D;&#x3D;"></a>&#x3D;&#x3D;防火墙与 SELinux 准备&#x3D;&#x3D;</h1><p> 在 Prometheus &#x2F; node_exporter 主机放行对应端口：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># Prometheus 服务端主机</span></span><br><span class="line">firewall-cmd --add-port=9090/tcp --permanent</span><br><span class="line"><span class="comment"># node_exporter 监控端主机（被抓取方）</span></span><br><span class="line">firewall-cmd --add-port=9100/tcp --permanent</span><br><span class="line"><span class="comment"># Grafana 主机</span></span><br><span class="line">firewall-cmd --add-port=3000/tcp --permanent</span><br><span class="line"></span><br><span class="line">firewall-cmd --reload</span><br><span class="line">firewall-cmd --list-ports</span><br></pre></td></tr></table></figure>
-
-<p> 关闭 SELinux（否则 Grafana 连接 Prometheus API 会失败）：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">setenforce 0</span><br><span class="line">sed -i <span class="string">&#x27;s/^SELINUX=enforcing/SELINUX=disabled/&#x27;</span> /etc/selinux/config</span><br></pre></td></tr></table></figure>
-<p> 说明：生产环境更推荐用 setsebool 放通而非直接禁用，这里为排错顺畅先关闭。</p>
-<h1 id="部署-Prometheus-服务端"><a href="#部署-Prometheus-服务端" class="headerlink" title="&#x3D;&#x3D;部署 Prometheus 服务端&#x3D;&#x3D;"></a>&#x3D;&#x3D;部署 Prometheus 服务端&#x3D;&#x3D;</h1><p> 下载并安装到 &#x2F;opt（参考视频与文档整理）：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cd</span> /opt/</span><br><span class="line">wget https://github.com/prometheus/prometheus/releases/download/v2.49.1/prometheus-2.49.1.linux-amd64.tar.gz</span><br><span class="line">tar -zxvf prometheus-2.49.1.linux-amd64.tar.gz</span><br><span class="line"><span class="built_in">mv</span> prometheus-2.49.1.linux-amd64 prometheus</span><br><span class="line"><span class="built_in">cd</span> prometheus</span><br><span class="line"></span><br><span class="line"><span class="comment"># 为规范运维，拆分目录</span></span><br><span class="line"><span class="built_in">mkdir</span> bin conf data</span><br><span class="line"><span class="built_in">mv</span> prometheus promtool bin/</span><br><span class="line"><span class="built_in">mv</span> prometheus.yml conf/</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建专用运行用户并赋权</span></span><br><span class="line">useradd -r -s /sbin/nologin prometheus</span><br><span class="line"><span class="built_in">chown</span> -R prometheus.prometheus /opt/prometheus</span><br></pre></td></tr></table></figure>
-
-<p> 配置环境变量（方便直接调用 prometheus &#x2F; promtool）：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cat</span> &gt; /etc/profile.d/prometheus.sh &lt;&lt;<span class="string">&#x27;EOF&#x27;</span></span><br><span class="line"><span class="built_in">export</span> PROMETHEUS_HOME=/opt/prometheus</span><br><span class="line"><span class="built_in">export</span> PATH=<span class="variable">$&#123;PROMETHEUS_HOME&#125;</span>/bin:<span class="variable">$PATH</span></span><br><span class="line">EOF</span><br><span class="line"><span class="built_in">source</span> /etc/profile.d/prometheus.sh</span><br></pre></td></tr></table></figure>
-
-<p> 先用 promtool 检查配置文件语法：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">promtool check config /opt/prometheus/conf/prometheus.yml</span><br></pre></td></tr></table></figure>
-
-<p> 编写 systemd 守护进程（已修正原笔记中的拼写与运行用户不一致问题）：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /lib/systemd/system/prometheus.service</span><br></pre></td></tr></table></figure>
-<figure class="highlight ini"><table><tr><td class="code"><pre><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="attr">Description</span>=prometheus</span><br><span class="line"><span class="attr">Documentation</span>=https://prometheus.io/docs/</span><br><span class="line"><span class="attr">After</span>=network.target</span><br><span class="line"></span><br><span class="line"><span class="section">[Service]</span></span><br><span class="line"><span class="attr">User</span>=prometheus</span><br><span class="line"><span class="attr">WorkingDirectory</span>=/opt/prometheus</span><br><span class="line"><span class="attr">ExecStart</span>=/opt/prometheus/bin/prometheus --config.file=/opt/prometheus/conf/prometheus.yml --storage.tsdb.path=/opt/prometheus/data</span><br><span class="line"><span class="attr">ExecReload</span>=/bin/kill -HUP <span class="variable">$MAINPID</span></span><br><span class="line"><span class="attr">Restart</span>=<span class="literal">on</span>-failure</span><br><span class="line"><span class="attr">LimitNOFILE</span>=<span class="number">65535</span></span><br><span class="line"></span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span>=multi-user.target</span><br></pre></td></tr></table></figure>
-<p> 说明：原笔记写成 User&#x3D;root，但目录已 chown 给 prometheus 用户，存在不一致；此处统一改为 User&#x3D;prometheus。原笔记 WorkingDirector 拼写错误，已修正为 WorkingDirectory。可参考系统自带 &#x2F;lib&#x2F;systemd&#x2F;system&#x2F;sshd.service 的写法。</p>
-<p> 启动并设置开机自启：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl <span class="built_in">enable</span> --now prometheus</span><br><span class="line">systemctl status prometheus</span><br></pre></td></tr></table></figure>
-
-<h1 id="部署-node-exporter-监控端"><a href="#部署-node-exporter-监控端" class="headerlink" title="&#x3D;&#x3D;部署 node_exporter 监控端&#x3D;&#x3D;"></a>&#x3D;&#x3D;部署 node_exporter 监控端&#x3D;&#x3D;</h1><p> 在被监控主机（或本机）安装 node_exporter：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">yum -y install wget</span><br><span class="line"><span class="built_in">cd</span> /opt/</span><br><span class="line">wget https://github.com/prometheus/node_exporter/releases/download/v1.7.0/node_exporter-1.7.0.linux-amd64.tar.gz</span><br><span class="line">tar -zxvf node_exporter-1.7.0.linux-amd64.tar.gz</span><br><span class="line"><span class="built_in">mv</span> node_exporter-1.7.0.linux-amd64 node_exporter</span><br><span class="line"><span class="built_in">cd</span> node_exporter</span><br><span class="line"><span class="built_in">mkdir</span> bin</span><br><span class="line"><span class="built_in">mv</span> node_exporter bin/</span><br></pre></td></tr></table></figure>
-
-<p> 编写 systemd 守护进程（已修正 type -&gt; Type）：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /lib/systemd/system/node_exporter.service</span><br></pre></td></tr></table></figure>
-<figure class="highlight ini"><table><tr><td class="code"><pre><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="attr">Description</span>=node_exporter</span><br><span class="line"><span class="attr">After</span>=network.target</span><br><span class="line"></span><br><span class="line"><span class="section">[Service]</span></span><br><span class="line"><span class="attr">Type</span>=simple</span><br><span class="line"><span class="attr">ExecStart</span>=/opt/node_exporter/bin/node_exporter</span><br><span class="line"><span class="attr">Restart</span>=<span class="literal">on</span>-failure</span><br><span class="line"></span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span>=multi-user.target</span><br></pre></td></tr></table></figure>
-
-<p> 启动：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl <span class="built_in">enable</span> --now node_exporter</span><br><span class="line">systemctl status node_exporter</span><br></pre></td></tr></table></figure>
-
-<h1 id="配置抓取目标（让-Prometheus-监控-node-exporter）"><a href="#配置抓取目标（让-Prometheus-监控-node-exporter）" class="headerlink" title="&#x3D;&#x3D;配置抓取目标（让 Prometheus 监控 node_exporter）&#x3D;&#x3D;"></a>&#x3D;&#x3D;配置抓取目标（让 Prometheus 监控 node_exporter）&#x3D;&#x3D;</h1><p> 编辑 Prometheus 的配置文件，增加一个 job 指向 node_exporter：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /opt/prometheus/conf/prometheus.yml</span><br></pre></td></tr></table></figure>
-<p> 在 scrape_configs 下新增（可基于默认的 prometheus job 复制一份修改）：</p>
-<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="bullet">-</span> <span class="attr">job_name:</span> <span class="string">&quot;node&quot;</span></span><br><span class="line">  <span class="attr">static_configs:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">targets:</span> [<span class="string">&quot;192.168.1.100:9100&quot;</span>]</span><br></pre></td></tr></table></figure>
-<p> 说明：targets 换成你实际被监控主机的 IP 与端口（示例 192.168.1.100:9100 按需修改）。如需监控多台，写成 [“ip1:9100”,”ip2:9100”]。</p>
-<p> 改完配置后先检查语法再热加载：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">promtool check config /opt/prometheus/conf/prometheus.yml</span><br><span class="line">systemctl reload prometheus</span><br></pre></td></tr></table></figure>
-<p> 验证：浏览器打开 http:&#x2F;&#x2F;<prometheus-ip>:9090 → Status → Targets，看到 node job 状态为 UP 即正常。</p>
-<h1 id="安装并配置-Grafana"><a href="#安装并配置-Grafana" class="headerlink" title="&#x3D;&#x3D;安装并配置 Grafana&#x3D;&#x3D;"></a>&#x3D;&#x3D;安装并配置 Grafana&#x3D;&#x3D;</h1><p> 添加 Grafana 官方 yum 源（原笔记的一行 yum 装 repo 可能报错但可忽略，这里给出更规范的写法）：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cat</span> &gt; /etc/yum.repos.d/grafana.repo &lt;&lt;<span class="string">&#x27;EOF&#x27;</span></span><br><span class="line">[grafana]</span><br><span class="line">name=grafana</span><br><span class="line">baseurl=https://rpm.grafana.com</span><br><span class="line">repo_gpgcheck=1</span><br><span class="line">enabled=1</span><br><span class="line">gpgcheck=1</span><br><span class="line">gpgkey=https://rpm.grafana.com/gpg.key</span><br><span class="line">sslverify=1</span><br><span class="line">sslcacert=/etc/pki/tls/certs/ca-bundle.crt</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line">yum install grafana -y</span><br><span class="line">systemctl <span class="built_in">enable</span> --now grafana-server</span><br><span class="line">systemctl status grafana-server</span><br></pre></td></tr></table></figure>
-
-<p> 登录并接入 Prometheus 数据源：<br>  1 浏览器打开 http:&#x2F;&#x2F;<grafana-ip>:3000，默认账号 admin &#x2F; admin，首次登录会要求改密码<br>  2 左侧菜单 ☰ → Connections → Data sources → Add data source → 选择 Prometheus<br>  3 URL 填 <a href="http://localhost:9090（若">http://localhost:9090（若</a> Prometheus 在别的机器则填其 IP:9090），其他默认<br>  4 点击 Save &amp; test，提示 Data source is working 即接入成功</p>
-<p> 导入 Node Exporter 仪表盘：<br>  1 左侧菜单 ☰ → Dashboards → New → Import<br>  2 Import via grafana.com 处输入仪表盘 ID：1860（经典 Node Exporter Full；也可使用 8919 等新版模板）<br>  3 选择刚添加的 Prometheus 数据源，点击 Import<br>  4 进入仪表盘后即可看到 CPU、内存、磁盘、网络等图表</p>
-<h1 id="配置语法检查与排错"><a href="#配置语法检查与排错" class="headerlink" title="&#x3D;&#x3D;配置语法检查与排错&#x3D;&#x3D;"></a>&#x3D;&#x3D;配置语法检查与排错&#x3D;&#x3D;</h1><p> 写 prometheus.yml 容易因缩进&#x2F;格式报语法错误，两点经验：<br>  用 vim 的快捷键减少手敲出错：<br>    yy：复制当前行（前面加数字可向下复制多行，如 3yy）<br>    p：粘贴<br>    dd：删除当前行<br>  每次改完都用 promtool 校验：</p>
-<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">promtool check config /opt/prometheus/conf/prometheus.yml</span><br></pre></td></tr></table></figure>
-
-<p> 常见排错清单：<br>  页面打不开 &#x2F; 目标不 UP：检查对应端口防火墙是否放行（9090&#x2F;9100&#x2F;3000）<br>  Grafana 连不上 Prometheus：检查 SELinux 是否已关闭，以及数据源 URL 是否正确可达<br>  配置改了不生效：确认用 systemctl reload prometheus 热加载，而非只改文件<br>  服务起不来：journalctl -u prometheus &#x2F; journalctl -u node_exporter 看详细日志</p>
-<h1 id="视频参考"><a href="#视频参考" class="headerlink" title="&#x3D;&#x3D;视频参考&#x3D;&#x3D;"></a>&#x3D;&#x3D;视频参考&#x3D;&#x3D;</h1><p> B站参考视频：<br> <a href="https://www.bilibili.com/video/BV1V6WteXE8c/?spm_id_from=333.1387.search.video_card.click&vd_source=3ecf25c5b1cd7647f90e50c4b7109d37">https://www.bilibili.com/video/BV1V6WteXE8c/?spm_id_from=333.1387.search.video_card.click&amp;vd_source=3ecf25c5b1cd7647f90e50c4b7109d37</a></p>
-<p> 视频中的核心步骤与本文一致：解压包 → 改名 prometheus → 建 bin&#x2F;conf 目录 → 移动二进制与 yml →（文档里还建了 data 目录并新建 prometheus 用户）→ 用 .&#x2F;prometheus –config.file 启动服务。</p>
-]]></content>
-      <tags>
-        <tag>prometheus和grafana搭建</tag>
       </tags>
   </entry>
   <entry>
@@ -409,12 +235,186 @@
       </tags>
   </entry>
   <entry>
-    <title>k8s运维项目实战</title>
-    <url>/2026/10/19/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/</url>
-    <content><![CDATA[<p>本文整理自「Kubernetes笔记-bilibili」有道云笔记中运维三部分（09&#x2F;10&#x2F;11）的实操内容，涵盖 Harbor 镜像仓库、容器日志（Loki）、Prometheus 监控、Pod 固定 IP、NetworkPolicy、临时容器、端口转发、审计、Pod 与主机共享、安全参数、PodSecurityAdmission、资源限制、cordon&#x2F;drain、自定义 CRD、ETCD 备份等。已剔除理论讲解，仅保留命令、配置、操作步骤与实操截图。</p>
+    <title>prometheus和grafana搭建</title>
+    <url>/2026/05/20/prometheus%E5%92%8Cgrafana/</url>
+    <content><![CDATA[<p>本文记录基于 CentOS 7 使用 Prometheus + node_exporter + Grafana 搭建主机监控的完整流程，包含服务端&#x2F;监控端部署、systemd 守护进程、抓取目标配置、防火墙与 SELinux 准备、Grafana 数据源与仪表盘接入，以及配置语法检查与常见排错。</p>
 <span id="more"></span>
 
-<h1 id="09k8s-运维-第一部分"><a href="#09k8s-运维-第一部分" class="headerlink" title="&#x3D;&#x3D;09k8s-运维-第一部分&#x3D;&#x3D;"></a>&#x3D;&#x3D;09k8s-运维-第一部分&#x3D;&#x3D;</h1><h2 id="01-harbor镜像仓库"><a href="#01-harbor镜像仓库" class="headerlink" title="01 harbor镜像仓库"></a>01 harbor镜像仓库</h2><p>这章，如果镜像拉不下来，可以拉取国内镜像，然后打tag</p>
+<h1 id="监控原理概述"><a href="#监控原理概述" class="headerlink" title="&#x3D;&#x3D;监控原理概述&#x3D;&#x3D;"></a>&#x3D;&#x3D;监控原理概述&#x3D;&#x3D;</h1><p> Prometheus 监控体系分为两部分：<br>  服务端 Prometheus（prometheus-2.49.1.linux-amd64.tar.gz）：负责定时抓取（scrape）各目标暴露的指标，并存储、提供查询与告警。<br>  监控端 node_exporter（node_exporter-1.7.0.linux-amd64.tar.gz）：部署在被监控主机上，对外暴露 &#x2F;metrics 指标接口。</p>
+<p> 原理：node_exporter 在主机上启动后监听 9100 端口，持续采集 CPU、内存、磁盘、网络等系统指标；Prometheus 按配置的周期主动去这些目标的 &#x2F;metrics 拉取数据，从而实现监控。Grafana 再接入 Prometheus 作为数据源，把指标画成图表。</p>
+<h1 id="版本与端口说明"><a href="#版本与端口说明" class="headerlink" title="&#x3D;&#x3D;版本与端口说明&#x3D;&#x3D;"></a>&#x3D;&#x3D;版本与端口说明&#x3D;&#x3D;</h1><p> 组件版本：<br>  Prometheus：2.49.1<br>  node_exporter：1.7.0<br>  Grafana：oss 最新</p>
+<p> 涉及端口（部署前需在防火墙放行）：<br>  9090：Prometheus 服务端 Web&#x2F;API<br>  9100：node_exporter 指标接口<br>  3000：Grafana Web</p>
+<p> 注意事项：<br>  Grafana 通过 HTTP 调用 Prometheus 的 API（默认 9090）拉数据，因此若开启了 SELinux，需关闭或放通相关策略，否则 Grafana 连不上 Prometheus 的 API。</p>
+<h1 id="防火墙与-SELinux-准备"><a href="#防火墙与-SELinux-准备" class="headerlink" title="&#x3D;&#x3D;防火墙与 SELinux 准备&#x3D;&#x3D;"></a>&#x3D;&#x3D;防火墙与 SELinux 准备&#x3D;&#x3D;</h1><p> 在 Prometheus &#x2F; node_exporter 主机放行对应端口：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># Prometheus 服务端主机</span></span><br><span class="line">firewall-cmd --add-port=9090/tcp --permanent</span><br><span class="line"><span class="comment"># node_exporter 监控端主机（被抓取方）</span></span><br><span class="line">firewall-cmd --add-port=9100/tcp --permanent</span><br><span class="line"><span class="comment"># Grafana 主机</span></span><br><span class="line">firewall-cmd --add-port=3000/tcp --permanent</span><br><span class="line"></span><br><span class="line">firewall-cmd --reload</span><br><span class="line">firewall-cmd --list-ports</span><br></pre></td></tr></table></figure>
+
+<p> 关闭 SELinux（否则 Grafana 连接 Prometheus API 会失败）：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">setenforce 0</span><br><span class="line">sed -i <span class="string">&#x27;s/^SELINUX=enforcing/SELINUX=disabled/&#x27;</span> /etc/selinux/config</span><br></pre></td></tr></table></figure>
+<p> 说明：生产环境更推荐用 setsebool 放通而非直接禁用，这里为排错顺畅先关闭。</p>
+<h1 id="部署-Prometheus-服务端"><a href="#部署-Prometheus-服务端" class="headerlink" title="&#x3D;&#x3D;部署 Prometheus 服务端&#x3D;&#x3D;"></a>&#x3D;&#x3D;部署 Prometheus 服务端&#x3D;&#x3D;</h1><p> 下载并安装到 &#x2F;opt（参考视频与文档整理）：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cd</span> /opt/</span><br><span class="line">wget https://github.com/prometheus/prometheus/releases/download/v2.49.1/prometheus-2.49.1.linux-amd64.tar.gz</span><br><span class="line">tar -zxvf prometheus-2.49.1.linux-amd64.tar.gz</span><br><span class="line"><span class="built_in">mv</span> prometheus-2.49.1.linux-amd64 prometheus</span><br><span class="line"><span class="built_in">cd</span> prometheus</span><br><span class="line"></span><br><span class="line"><span class="comment"># 为规范运维，拆分目录</span></span><br><span class="line"><span class="built_in">mkdir</span> bin conf data</span><br><span class="line"><span class="built_in">mv</span> prometheus promtool bin/</span><br><span class="line"><span class="built_in">mv</span> prometheus.yml conf/</span><br><span class="line"></span><br><span class="line"><span class="comment"># 创建专用运行用户并赋权</span></span><br><span class="line">useradd -r -s /sbin/nologin prometheus</span><br><span class="line"><span class="built_in">chown</span> -R prometheus.prometheus /opt/prometheus</span><br></pre></td></tr></table></figure>
+
+<p> 配置环境变量（方便直接调用 prometheus &#x2F; promtool）：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cat</span> &gt; /etc/profile.d/prometheus.sh &lt;&lt;<span class="string">&#x27;EOF&#x27;</span></span><br><span class="line"><span class="built_in">export</span> PROMETHEUS_HOME=/opt/prometheus</span><br><span class="line"><span class="built_in">export</span> PATH=<span class="variable">$&#123;PROMETHEUS_HOME&#125;</span>/bin:<span class="variable">$PATH</span></span><br><span class="line">EOF</span><br><span class="line"><span class="built_in">source</span> /etc/profile.d/prometheus.sh</span><br></pre></td></tr></table></figure>
+
+<p> 先用 promtool 检查配置文件语法：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">promtool check config /opt/prometheus/conf/prometheus.yml</span><br></pre></td></tr></table></figure>
+
+<p> 编写 systemd 守护进程（已修正原笔记中的拼写与运行用户不一致问题）：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /lib/systemd/system/prometheus.service</span><br></pre></td></tr></table></figure>
+<figure class="highlight ini"><table><tr><td class="code"><pre><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="attr">Description</span>=prometheus</span><br><span class="line"><span class="attr">Documentation</span>=https://prometheus.io/docs/</span><br><span class="line"><span class="attr">After</span>=network.target</span><br><span class="line"></span><br><span class="line"><span class="section">[Service]</span></span><br><span class="line"><span class="attr">User</span>=prometheus</span><br><span class="line"><span class="attr">WorkingDirectory</span>=/opt/prometheus</span><br><span class="line"><span class="attr">ExecStart</span>=/opt/prometheus/bin/prometheus --config.file=/opt/prometheus/conf/prometheus.yml --storage.tsdb.path=/opt/prometheus/data</span><br><span class="line"><span class="attr">ExecReload</span>=/bin/kill -HUP <span class="variable">$MAINPID</span></span><br><span class="line"><span class="attr">Restart</span>=<span class="literal">on</span>-failure</span><br><span class="line"><span class="attr">LimitNOFILE</span>=<span class="number">65535</span></span><br><span class="line"></span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span>=multi-user.target</span><br></pre></td></tr></table></figure>
+<p> 说明：原笔记写成 User&#x3D;root，但目录已 chown 给 prometheus 用户，存在不一致；此处统一改为 User&#x3D;prometheus。原笔记 WorkingDirector 拼写错误，已修正为 WorkingDirectory。可参考系统自带 &#x2F;lib&#x2F;systemd&#x2F;system&#x2F;sshd.service 的写法。</p>
+<p> 启动并设置开机自启：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl <span class="built_in">enable</span> --now prometheus</span><br><span class="line">systemctl status prometheus</span><br></pre></td></tr></table></figure>
+
+<h1 id="部署-node-exporter-监控端"><a href="#部署-node-exporter-监控端" class="headerlink" title="&#x3D;&#x3D;部署 node_exporter 监控端&#x3D;&#x3D;"></a>&#x3D;&#x3D;部署 node_exporter 监控端&#x3D;&#x3D;</h1><p> 在被监控主机（或本机）安装 node_exporter：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">yum -y install wget</span><br><span class="line"><span class="built_in">cd</span> /opt/</span><br><span class="line">wget https://github.com/prometheus/node_exporter/releases/download/v1.7.0/node_exporter-1.7.0.linux-amd64.tar.gz</span><br><span class="line">tar -zxvf node_exporter-1.7.0.linux-amd64.tar.gz</span><br><span class="line"><span class="built_in">mv</span> node_exporter-1.7.0.linux-amd64 node_exporter</span><br><span class="line"><span class="built_in">cd</span> node_exporter</span><br><span class="line"><span class="built_in">mkdir</span> bin</span><br><span class="line"><span class="built_in">mv</span> node_exporter bin/</span><br></pre></td></tr></table></figure>
+
+<p> 编写 systemd 守护进程（已修正 type -&gt; Type）：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /lib/systemd/system/node_exporter.service</span><br></pre></td></tr></table></figure>
+<figure class="highlight ini"><table><tr><td class="code"><pre><span class="line"><span class="section">[Unit]</span></span><br><span class="line"><span class="attr">Description</span>=node_exporter</span><br><span class="line"><span class="attr">After</span>=network.target</span><br><span class="line"></span><br><span class="line"><span class="section">[Service]</span></span><br><span class="line"><span class="attr">Type</span>=simple</span><br><span class="line"><span class="attr">ExecStart</span>=/opt/node_exporter/bin/node_exporter</span><br><span class="line"><span class="attr">Restart</span>=<span class="literal">on</span>-failure</span><br><span class="line"></span><br><span class="line"><span class="section">[Install]</span></span><br><span class="line"><span class="attr">WantedBy</span>=multi-user.target</span><br></pre></td></tr></table></figure>
+
+<p> 启动：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl <span class="built_in">enable</span> --now node_exporter</span><br><span class="line">systemctl status node_exporter</span><br></pre></td></tr></table></figure>
+
+<h1 id="配置抓取目标（让-Prometheus-监控-node-exporter）"><a href="#配置抓取目标（让-Prometheus-监控-node-exporter）" class="headerlink" title="&#x3D;&#x3D;配置抓取目标（让 Prometheus 监控 node_exporter）&#x3D;&#x3D;"></a>&#x3D;&#x3D;配置抓取目标（让 Prometheus 监控 node_exporter）&#x3D;&#x3D;</h1><p> 编辑 Prometheus 的配置文件，增加一个 job 指向 node_exporter：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vim /opt/prometheus/conf/prometheus.yml</span><br></pre></td></tr></table></figure>
+<p> 在 scrape_configs 下新增（可基于默认的 prometheus job 复制一份修改）：</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="bullet">-</span> <span class="attr">job_name:</span> <span class="string">&quot;node&quot;</span></span><br><span class="line">  <span class="attr">static_configs:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">targets:</span> [<span class="string">&quot;192.168.1.100:9100&quot;</span>]</span><br></pre></td></tr></table></figure>
+<p> 说明：targets 换成你实际被监控主机的 IP 与端口（示例 192.168.1.100:9100 按需修改）。如需监控多台，写成 [“ip1:9100”,”ip2:9100”]。</p>
+<p> 改完配置后先检查语法再热加载：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">promtool check config /opt/prometheus/conf/prometheus.yml</span><br><span class="line">systemctl reload prometheus</span><br></pre></td></tr></table></figure>
+<p> 验证：浏览器打开 http:&#x2F;&#x2F;<prometheus-ip>:9090 → Status → Targets，看到 node job 状态为 UP 即正常。</p>
+<h1 id="安装并配置-Grafana"><a href="#安装并配置-Grafana" class="headerlink" title="&#x3D;&#x3D;安装并配置 Grafana&#x3D;&#x3D;"></a>&#x3D;&#x3D;安装并配置 Grafana&#x3D;&#x3D;</h1><p> 添加 Grafana 官方 yum 源（原笔记的一行 yum 装 repo 可能报错但可忽略，这里给出更规范的写法）：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cat</span> &gt; /etc/yum.repos.d/grafana.repo &lt;&lt;<span class="string">&#x27;EOF&#x27;</span></span><br><span class="line">[grafana]</span><br><span class="line">name=grafana</span><br><span class="line">baseurl=https://rpm.grafana.com</span><br><span class="line">repo_gpgcheck=1</span><br><span class="line">enabled=1</span><br><span class="line">gpgcheck=1</span><br><span class="line">gpgkey=https://rpm.grafana.com/gpg.key</span><br><span class="line">sslverify=1</span><br><span class="line">sslcacert=/etc/pki/tls/certs/ca-bundle.crt</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line">yum install grafana -y</span><br><span class="line">systemctl <span class="built_in">enable</span> --now grafana-server</span><br><span class="line">systemctl status grafana-server</span><br></pre></td></tr></table></figure>
+
+<p> 登录并接入 Prometheus 数据源：<br>  1 浏览器打开 http:&#x2F;&#x2F;<grafana-ip>:3000，默认账号 admin &#x2F; admin，首次登录会要求改密码<br>  2 左侧菜单 ☰ → Connections → Data sources → Add data source → 选择 Prometheus<br>  3 URL 填 <a href="http://localhost:9090（若">http://localhost:9090（若</a> Prometheus 在别的机器则填其 IP:9090），其他默认<br>  4 点击 Save &amp; test，提示 Data source is working 即接入成功</p>
+<p> 导入 Node Exporter 仪表盘：<br>  1 左侧菜单 ☰ → Dashboards → New → Import<br>  2 Import via grafana.com 处输入仪表盘 ID：1860（经典 Node Exporter Full；也可使用 8919 等新版模板）<br>  3 选择刚添加的 Prometheus 数据源，点击 Import<br>  4 进入仪表盘后即可看到 CPU、内存、磁盘、网络等图表</p>
+<h1 id="配置语法检查与排错"><a href="#配置语法检查与排错" class="headerlink" title="&#x3D;&#x3D;配置语法检查与排错&#x3D;&#x3D;"></a>&#x3D;&#x3D;配置语法检查与排错&#x3D;&#x3D;</h1><p> 写 prometheus.yml 容易因缩进&#x2F;格式报语法错误，两点经验：<br>  用 vim 的快捷键减少手敲出错：<br>    yy：复制当前行（前面加数字可向下复制多行，如 3yy）<br>    p：粘贴<br>    dd：删除当前行<br>  每次改完都用 promtool 校验：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">promtool check config /opt/prometheus/conf/prometheus.yml</span><br></pre></td></tr></table></figure>
+
+<p> 常见排错清单：<br>  页面打不开 &#x2F; 目标不 UP：检查对应端口防火墙是否放行（9090&#x2F;9100&#x2F;3000）<br>  Grafana 连不上 Prometheus：检查 SELinux 是否已关闭，以及数据源 URL 是否正确可达<br>  配置改了不生效：确认用 systemctl reload prometheus 热加载，而非只改文件<br>  服务起不来：journalctl -u prometheus &#x2F; journalctl -u node_exporter 看详细日志</p>
+<h1 id="视频参考"><a href="#视频参考" class="headerlink" title="&#x3D;&#x3D;视频参考&#x3D;&#x3D;"></a>&#x3D;&#x3D;视频参考&#x3D;&#x3D;</h1><p> B站参考视频：<br> <a href="https://www.bilibili.com/video/BV1V6WteXE8c/?spm_id_from=333.1387.search.video_card.click&vd_source=3ecf25c5b1cd7647f90e50c4b7109d37">https://www.bilibili.com/video/BV1V6WteXE8c/?spm_id_from=333.1387.search.video_card.click&amp;vd_source=3ecf25c5b1cd7647f90e50c4b7109d37</a></p>
+<p> 视频中的核心步骤与本文一致：解压包 → 改名 prometheus → 建 bin&#x2F;conf 目录 → 移动二进制与 yml →（文档里还建了 data 目录并新建 prometheus 用户）→ 用 .&#x2F;prometheus –config.file 启动服务。</p>
+]]></content>
+      <tags>
+        <tag>prometheus和grafana搭建</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>k8s一主两从部署</title>
+    <url>/2026/07/08/k8s%E4%B8%80%E4%B8%BB%E4%B8%A4%E4%BB%8E%E9%83%A8%E7%BD%B2/</url>
+    <content><![CDATA[<p>本文记录基于 Rocky Linux 9.8 使用 kubeadm 部署 Kubernetes 1.29 一主两从集群的完整流程，涵盖环境规划、系统初始化（网卡&#x2F;软件源&#x2F;防火墙&#x2F;Selinux&#x2F;swap&#x2F;hosts）、Docker 与 cri-docker 安装、kubeadm 初始化与节点加入，以及 Calico 网络插件部署，实现集群网络扁平化。</p>
+<span id="more"></span>
+
+<h1 id="环境规划"><a href="#环境规划" class="headerlink" title="&#x3D;&#x3D;环境规划&#x3D;&#x3D;"></a>&#x3D;&#x3D;环境规划&#x3D;&#x3D;</h1><p> 宿主机 VMnet1 配置为 192.168.66.52。<br> 统一 Rocky Linux 9.8 最小化安装；用 iKuai 32 位模拟生产环境路由器。</p>
+<p> 节点规划：<br>   iKuai：192.168.66.200，mem&#x3D;1GB，disk&#x3D;8GB<br>   master：192.168.66.11（RL-1），cpu&#x3D;4（2,2），mem&#x3D;4GB，nic&gt;&#x3D;1，disk&#x3D;100GB<br>   node1：192.168.66.12（RL-2）<br>   node2：192.168.66.13（RL-3）<br> 自定义分区：&#x2F;boot 800MB、&#x2F;swap 4GB、其余给 &#x2F;。<br> 网卡：第一块仅主机模式，第二块 NAT（后续删掉 NAT）。<br> iKuai 默认账号密码 admin &#x2F; admin。</p>
+<h1 id="系统初始化"><a href="#系统初始化" class="headerlink" title="&#x3D;&#x3D;系统初始化&#x3D;&#x3D;"></a>&#x3D;&#x3D;系统初始化&#x3D;&#x3D;</h1><h2 id="网卡配置静态（Rocky-9-x）"><a href="#网卡配置静态（Rocky-9-x）" class="headerlink" title="网卡配置静态（Rocky 9.x）"></a>网卡配置静态（Rocky 9.x）</h2><p> 配置文件路径：&#x2F;etc&#x2F;NetworkManager&#x2F;system-connections&#x2F;ens数字.nmconnection<br> 字段说明：method&#x3D;auto&#x2F;manual；address1&#x3D;ipaddress,getway</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">systemctl restart NetworkManager</span><br></pre></td></tr></table></figure>
+<p> 之后用 Xshell 连接。</p>
+<h2 id="更换软件源"><a href="#更换软件源" class="headerlink" title="更换软件源"></a>更换软件源</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sed -e <span class="string">&#x27;s|^mirrorlist=|#mirrorlist=|g&#x27;</span> \</span><br><span class="line">    -e <span class="string">&#x27;s|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.aliyun.com/rockylinux|g&#x27;</span> \</span><br><span class="line">    -i.bak \</span><br><span class="line">    /etc/yum.repos.d/[Rr]ocky*.repo</span><br><span class="line"></span><br><span class="line">dnf makecache   <span class="comment"># 建立缓存</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="改-firewalld-为-iptables，统一关闭-SELinux"><a href="#改-firewalld-为-iptables，统一关闭-SELinux" class="headerlink" title="改 firewalld 为 iptables，统一关闭 SELinux"></a>改 firewalld 为 iptables，统一关闭 SELinux</h2><p> firewalld 和 iptables 看你自己熟悉哪个，这里统一用 iptables。</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">systemctl stop firewalld</span><br><span class="line">systemctl <span class="built_in">disable</span> firewalld</span><br><span class="line"></span><br><span class="line">yum -y install iptables-services</span><br><span class="line">systemctl start iptables</span><br><span class="line">iptables -F</span><br><span class="line">systemctl <span class="built_in">enable</span> iptables</span><br><span class="line">service iptables save</span><br></pre></td></tr></table></figure>
+
+<h2 id="禁用-SELinux"><a href="#禁用-SELinux" class="headerlink" title="禁用 SELinux"></a>禁用 SELinux</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">setenforce 0</span><br><span class="line">sed -i <span class="string">&quot;s/SELINUX=enforcing/SELINUX=disabled/g&quot;</span> /etc/selinux/config</span><br><span class="line">grubby --update-kernel ALL --args selinux=0</span><br><span class="line"></span><br><span class="line"><span class="comment"># 查看是否禁用</span></span><br><span class="line">grubby --info DEFAULT</span><br><span class="line"></span><br><span class="line"><span class="comment"># 回滚内核层禁用操作</span></span><br><span class="line">grubby --update-kernel ALL --remove-args selinux</span><br></pre></td></tr></table></figure>
+
+<h2 id="设置时区"><a href="#设置时区" class="headerlink" title="设置时区"></a>设置时区</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">timedatectl set-timezone Asia/Shanghai</span><br></pre></td></tr></table></figure>
+
+<h2 id="配置网关与-DNS"><a href="#配置网关与-DNS" class="headerlink" title="配置网关与 DNS"></a>配置网关与 DNS</h2><p> 编辑 ens160（示例），手动配 IP、网关、DNS：</p>
+<figure class="highlight ini"><table><tr><td class="code"><pre><span class="line"><span class="section">[connection]</span></span><br><span class="line"><span class="attr">id</span>=ens160</span><br><span class="line"><span class="attr">uuid</span>=cb0afec5-<span class="number">7</span>cf8-<span class="number">37</span>a3-<span class="number">92</span>c7-fe1c761f40e0</span><br><span class="line"><span class="attr">type</span>=ethernet</span><br><span class="line"><span class="attr">autoconnect-priority</span>=-<span class="number">999</span></span><br><span class="line"><span class="attr">interface-name</span>=ens160</span><br><span class="line"><span class="attr">timestamp</span>=<span class="number">1786005662</span></span><br><span class="line"></span><br><span class="line"><span class="section">[ethernet]</span></span><br><span class="line"></span><br><span class="line"><span class="section">[ipv4]</span></span><br><span class="line"><span class="attr">method</span>=manual</span><br><span class="line"><span class="attr">address1</span>=<span class="number">192.168</span>.<span class="number">66.11</span>/<span class="number">24</span>,<span class="number">192.168</span>.<span class="number">66.200</span></span><br><span class="line"><span class="attr">dns</span>=<span class="number">114.114</span>.<span class="number">114.114</span><span class="comment">;8.8.8.8</span></span><br><span class="line"></span><br><span class="line"><span class="section">[ipv6]</span></span><br><span class="line"><span class="attr">addr-gen-mode</span>=eui64</span><br><span class="line"><span class="attr">method</span>=auto</span><br><span class="line"></span><br><span class="line"><span class="section">[proxy]</span></span><br></pre></td></tr></table></figure>
+
+<p> 编辑 ens192，改成非自动启动（在 [connection] 块添加 autoconnect&#x3D;false）：</p>
+<figure class="highlight ini"><table><tr><td class="code"><pre><span class="line"><span class="section">[connection]</span></span><br><span class="line"><span class="attr">id</span>=ens192</span><br><span class="line"><span class="attr">uuid</span>=<span class="number">9</span>aba7a87-ad21-<span class="number">3668</span>-acb1-<span class="number">05620</span>f9a8047</span><br><span class="line"><span class="attr">type</span>=ethernet</span><br><span class="line"><span class="attr">autoconnect-priority</span>=-<span class="number">999</span></span><br><span class="line"><span class="attr">autoconnect</span>=<span class="literal">false</span></span><br><span class="line"><span class="attr">interface-name</span>=ens192</span><br><span class="line"><span class="attr">timestamp</span>=<span class="number">1786005662</span></span><br><span class="line"></span><br><span class="line"><span class="section">[ethernet]</span></span><br><span class="line"></span><br><span class="line"><span class="section">[ipv4]</span></span><br><span class="line"><span class="attr">method</span>=auto</span><br><span class="line"></span><br><span class="line"><span class="section">[ipv6]</span></span><br><span class="line"><span class="attr">addr-gen-mode</span>=eui64</span><br><span class="line"><span class="attr">method</span>=auto</span><br><span class="line"></span><br><span class="line"><span class="section">[proxy]</span></span><br></pre></td></tr></table></figure>
+
+<p> 重载设备或者重启：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">nmcli d d ens192</span><br><span class="line">nmcli d r ens160</span><br><span class="line">nmcli c r ens160</span><br></pre></td></tr></table></figure>
+
+<h2 id="关闭-swap"><a href="#关闭-swap" class="headerlink" title="关闭 swap"></a>关闭 swap</h2><p> 之所以一开始给它分空间，就是为了告诉你怎么关。</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">swapoff -a   <span class="comment"># 临时</span></span><br><span class="line">sed -i <span class="string">&#x27;s:/dev/mapper/rl‑swap:#/dev/mapper/rl‑swap:g&#x27;</span> /etc/fstab</span><br><span class="line"></span><br><span class="line">free -m   <span class="comment"># 验证</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="修改主机名"><a href="#修改主机名" class="headerlink" title="修改主机名"></a>修改主机名</h2><p> 可用 nmtui 图形改，也可纯命令：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">hostnamectl set-hostname k8s-master01</span><br></pre></td></tr></table></figure>
+<p> 三台分别设为：k8s-master01、k8s-node01、k8s-node02。</p>
+<h2 id="编辑-hosts-文件并发送到-node1-和-node2"><a href="#编辑-hosts-文件并发送到-node1-和-node2" class="headerlink" title="编辑 hosts 文件并发送到 node1 和 node2"></a>编辑 hosts 文件并发送到 node1 和 node2</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vi /etc/hosts</span><br></pre></td></tr></table></figure>
+<figure class="highlight ini"><table><tr><td class="code"><pre><span class="line">127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4</span><br><span class="line">::1         localhost localhost.localdomain localhost6 localhost6.localdomain6</span><br><span class="line"></span><br><span class="line">192.168.66.11 k8s-master01 m1</span><br><span class="line">192.168.66.12 k8s-node01 n1</span><br><span class="line">192.168.66.13 k8s-node02 n2</span><br><span class="line">192.168.66.14 harbor</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">scp /etc/hosts root@n1:/etc/hosts</span><br></pre></td></tr></table></figure>
+
+<h2 id="安装-ipvs"><a href="#安装-ipvs" class="headerlink" title="安装 ipvs"></a>安装 ipvs</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">dnf install -y ipvsadm</span><br></pre></td></tr></table></figure>
+
+<h2 id="开启路由转发"><a href="#开启路由转发" class="headerlink" title="开启路由转发"></a>开启路由转发</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;net.ipv4.ip_forward=1&#x27;</span> &gt;&gt; /etc/sysctl.conf</span><br><span class="line">sysctl -p   <span class="comment"># 刷新生效</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="加载-bridge-模块（可选，为后期网络测试）"><a href="#加载-bridge-模块（可选，为后期网络测试）" class="headerlink" title="加载 bridge 模块（可选，为后期网络测试）"></a>加载 bridge 模块（可选，为后期网络测试）</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">dnf install -y epel-release</span><br><span class="line">dnf install -y bridge-utils</span><br><span class="line"></span><br><span class="line">modprobe br_netfilter</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;br_netfilter&#x27;</span> &gt;&gt; /etc/modules-load.d/bridge.conf</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;net.bridge.bridge-nf-call-iptables=1&#x27;</span> &gt;&gt; /etc/sysctl.conf</span><br><span class="line"><span class="built_in">echo</span> <span class="string">&#x27;net.bridge.bridge-nf-call-ip6tables=1&#x27;</span> &gt;&gt; /etc/sysctl.conf</span><br><span class="line"></span><br><span class="line">sysctl -p</span><br></pre></td></tr></table></figure>
+
+<h1 id="安装-Docker"><a href="#安装-Docker" class="headerlink" title="&#x3D;&#x3D;安装 Docker&#x3D;&#x3D;"></a>&#x3D;&#x3D;安装 Docker&#x3D;&#x3D;</h1><h2 id="添加中科大源"><a href="#添加中科大源" class="headerlink" title="添加中科大源"></a>添加中科大源</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">sudo</span> dnf config-manager --add-repo https://mirrors.ustc.edu.cn/docker-ce/linux/centos/docker-ce.repo</span><br><span class="line"></span><br><span class="line"><span class="built_in">cd</span> /etc/yum.repos.d   <span class="comment"># 验证</span></span><br><span class="line"><span class="built_in">cat</span> docker-ce.repo</span><br><span class="line"></span><br><span class="line"><span class="comment"># 切换中科大源</span></span><br><span class="line">sed -e <span class="string">&#x27;s|download.docker.com|mirrors.ustc.edu.cn/docker-ce|g&#x27;</span> docker-ce.repo &gt; docker-ce-ustc.repo</span><br><span class="line"></span><br><span class="line"><span class="built_in">mv</span> docker-ce.repo docker-ce.repo.back   <span class="comment"># 改成备份文件，让 docker 原生源不生效</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="安装-docker-ce"><a href="#安装-docker-ce" class="headerlink" title="安装 docker-ce"></a>安装 docker-ce</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">dnf install -y docker-ce</span><br></pre></td></tr></table></figure>
+
+<h2 id="配置-daemon"><a href="#配置-daemon" class="headerlink" title="配置 daemon"></a>配置 daemon</h2><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cat</span> &gt; /etc/docker/daemon.json &lt;&lt;<span class="string">EOF</span></span><br><span class="line"><span class="string">&#123;</span></span><br><span class="line"><span class="string">  &quot;data-root&quot;: &quot;/data/docker&quot;,</span></span><br><span class="line"><span class="string">  &quot;exec-opts&quot;: [&quot;native.cgroupdriver=systemd&quot;],</span></span><br><span class="line"><span class="string">  &quot;log-driver&quot;: &quot;json-file&quot;,</span></span><br><span class="line"><span class="string">  &quot;log-opts&quot;: &#123;</span></span><br><span class="line"><span class="string">    &quot;max-size&quot;: &quot;100m&quot;,</span></span><br><span class="line"><span class="string">    &quot;max-file&quot;: &quot;100&quot;</span></span><br><span class="line"><span class="string">  &#125;,</span></span><br><span class="line"><span class="string">  &quot;insecure-registries&quot;: [&quot;harbor.xinxainghf.com&quot;],</span></span><br><span class="line"><span class="string">  &quot;registry-mirrors&quot;: [&quot;https://kfp63jaj.mirror.aliyuncs.com&quot;]</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"><span class="string">EOF</span></span><br><span class="line"></span><br><span class="line"><span class="built_in">mkdir</span> -p /etc/systemd/system/docker.service.d</span><br></pre></td></tr></table></figure>
+
+<p> 重载配置、重启 docker、开机自启：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">systemctl daemon-reload &amp;&amp; systemctl restart docker &amp;&amp; systemctl <span class="built_in">enable</span> docker</span><br><span class="line"></span><br><span class="line">reboot   <span class="comment"># 把之前的配置都落地一下</span></span><br></pre></td></tr></table></figure>
+
+<h1 id="安装-cri-docker"><a href="#安装-cri-docker" class="headerlink" title="&#x3D;&#x3D;安装 cri-docker&#x3D;&#x3D;"></a>&#x3D;&#x3D;安装 cri-docker&#x3D;&#x3D;</h1><p> 这个组件用来翻译 OCI 语言（新的容器基本都是 CRI；之前由 k8s 维护，宣布舍弃 Docker 后，Docker 自己维护了 cri-docker）。</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">wget https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.9/cri-dockerd-0.3.9.amd64.tgz</span><br><span class="line">tar -xf cri-dockerd-0.3.9.amd64.tgz</span><br><span class="line"><span class="built_in">cp</span>/mv cri-dockerd/cri-dockerd /usr/bin/</span><br><span class="line"><span class="built_in">chmod</span> a+x /usr/bin/cri-dockerd</span><br></pre></td></tr></table></figure>
+
+<p> 配置 cri-docker 服务：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cat</span> &lt;&lt;<span class="string">&quot;EOF&quot;</span> &gt; /usr/lib/systemd/system/cri-docker.service</span><br><span class="line">[Unit]</span><br><span class="line">Description=CRI Interface <span class="keyword">for</span> Docker Application Container Engine</span><br><span class="line">Documentation=https://docs.mirantis.com</span><br><span class="line">After=network-online.target firewalld.service docker.service</span><br><span class="line">Wants=network-online.target</span><br><span class="line">Requires=cri-docker.socket</span><br><span class="line">[Service]</span><br><span class="line">Type=notify</span><br><span class="line">ExecStart=/usr/bin/cri-dockerd --network-plugin=cni --pod-infra-container-image=registry.aliyuncs.com/google_containers/pause:3.9</span><br><span class="line">ExecReload=/bin/kill -s HUP <span class="variable">$MAINPID</span></span><br><span class="line">TimeoutSec=0</span><br><span class="line">RestartSec=2</span><br><span class="line">Restart=always</span><br><span class="line">StartLimitBurst=3</span><br><span class="line">StartLimitInterval=60s</span><br><span class="line">LimitNOFILE=infinity</span><br><span class="line">LimitNPROC=infinity</span><br><span class="line">LimitCORE=infinity</span><br><span class="line">TasksMax=infinity</span><br><span class="line">Delegate=<span class="built_in">yes</span></span><br><span class="line">KillMode=process</span><br><span class="line">[Install]</span><br><span class="line">WantedBy=multi-user.target</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+<p> 添加 cri-docker 套接字：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cat</span> &lt;&lt;<span class="string">&quot;EOF&quot;</span> &gt; /usr/lib/systemd/system/cri-docker.socket</span><br><span class="line">[Unit]</span><br><span class="line">Description=CRI Docker Socket <span class="keyword">for</span> the API</span><br><span class="line">PartOf=cri-docker.service</span><br><span class="line"></span><br><span class="line">[Socket]</span><br><span class="line">ListenStream=%t/cri-dockerd.sock</span><br><span class="line">SocketMode=0660</span><br><span class="line">SocketUser=root</span><br><span class="line">SocketGroup=docker</span><br><span class="line"></span><br><span class="line">[Install]</span><br><span class="line">WantedBy=sockets.target</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+<p> 启动对应服务：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl <span class="built_in">enable</span> cri-docker</span><br><span class="line">systemctl start cri-docker</span><br><span class="line">systemctl is-active cri-docker</span><br></pre></td></tr></table></figure>
+
+<h1 id="安装-kubeadm-kubelet-kubectl"><a href="#安装-kubeadm-kubelet-kubectl" class="headerlink" title="&#x3D;&#x3D;安装 kubeadm &#x2F; kubelet &#x2F; kubectl&#x3D;&#x3D;"></a>&#x3D;&#x3D;安装 kubeadm &#x2F; kubelet &#x2F; kubectl&#x3D;&#x3D;</h1><p> 添加 kubeadm yum 源：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">cat</span> &lt;&lt;<span class="string">EOF &gt; /etc/yum.repos.d/kubernetes.repo</span></span><br><span class="line"><span class="string">[kubernetes]</span></span><br><span class="line"><span class="string">name=Kubernetes</span></span><br><span class="line"><span class="string">baseurl=https://pkgs.k8s.io/core:/stable:/v1.29/rpm/</span></span><br><span class="line"><span class="string">enabled=1</span></span><br><span class="line"><span class="string">gpgcheck=1</span></span><br><span class="line"><span class="string">gpgkey=https://pkgs.k8s.io/core:/stable:/v1.29/rpm/repodata/repomd.xml.key</span></span><br><span class="line"><span class="string">exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni # 安装的时候需要把这行注释，本意是为了防止自动更新</span></span><br><span class="line"><span class="string">EOF</span></span><br></pre></td></tr></table></figure>
+
+<p> 安装 kubeadm 1.29 版本：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">yum install -y kubelet-1.29.0 kubectl-1.29.0 kubeadm-1.29.0</span><br><span class="line">systemctl <span class="built_in">enable</span> kubelet.service</span><br></pre></td></tr></table></figure>
+
+<p> 课外：为什么不能只靠 docker 来跑 k8s —— docker run –restart&#x3D;always 只是 docker 启动时给容器传达一个启动信息，容器没启动成功也不会继续传达，无法保障组件正常工作，所以需要 kubelet，要给 kubelet.service 自启权限。<br> 启动顺序：linux → docker → cri-docker → kubelet → 其他组件。</p>
+<h1 id="初始化主节点"><a href="#初始化主节点" class="headerlink" title="&#x3D;&#x3D;初始化主节点&#x3D;&#x3D;"></a>&#x3D;&#x3D;初始化主节点&#x3D;&#x3D;</h1><p> 注意：要关闭 swap 和启动 kubelet 才能初始化；如果提示版本没有对齐，就修改 &#x2F;usr&#x2F;lib&#x2F;systemd&#x2F;system&#x2F;cri-docker.service。</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubeadm init --apiserver-advertise-address=192.168.66.11 --image-repository registry.aliyuncs.com/google_containers --kubernetes-version 1.29.0 --service-cidr=10.10.0.0/12 --pod-network-cidr=10.244.0.0/16 --ignore-preflight-errors=all --cri-socket unix:///var/run/cri-dockerd.sock</span><br></pre></td></tr></table></figure>
+
+<p> 必执行授权（主节点做即可）：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="built_in">mkdir</span> -p <span class="variable">$HOME</span>/.kube</span><br><span class="line"><span class="built_in">cp</span> -i /etc/kubernetes/admin.conf <span class="variable">$HOME</span>/.kube/config</span><br><span class="line"><span class="built_in">chown</span> $(<span class="built_in">id</span> -u):$(<span class="built_in">id</span> -g) <span class="variable">$HOME</span>/.kube/config</span><br></pre></td></tr></table></figure>
+
+<h1 id="加入-worker-节点"><a href="#加入-worker-节点" class="headerlink" title="&#x3D;&#x3D;加入 worker 节点&#x3D;&#x3D;"></a>&#x3D;&#x3D;加入 worker 节点&#x3D;&#x3D;</h1><p> 根据 init 输出内容，在 node1 和 node2 执行：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubeadm <span class="built_in">join</span> 192.168.66.11:6443 --token giioun.pnr09a78da80uh9b \</span><br><span class="line">	--discovery-token-ca-cert-hash sha256:e12ffdcae1f7688fee7958407e5938cd732269697639af0d369cb5ca8793590e --cri-socket unix:///var/run/cri-dockerd.sock</span><br></pre></td></tr></table></figure>
+
+<p> work token 默认 24h 过期，重新申请：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubeadm token create --print-join-command</span><br></pre></td></tr></table></figure>
+
+<h1 id="部署-Calico-网络插件"><a href="#部署-Calico-网络插件" class="headerlink" title="&#x3D;&#x3D;部署 Calico 网络插件&#x3D;&#x3D;"></a>&#x3D;&#x3D;部署 Calico 网络插件&#x3D;&#x3D;</h1><p> 参考文档：<br> <a href="https://docs.tigera.io/calico/latest/getting-started/kubernetes/self-managed-onprem/onpremises">https://docs.tigera.io/calico/latest/getting-started/kubernetes/self-managed-onprem/onpremises</a> （install-calico-with-kubernetes-api-datastore-more-than-50-nodes）</p>
+<p> 下载 calico.zip 并解压：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">unzip calico.zip</span><br></pre></td></tr></table></figure>
+<p> 解压出的内容：calico-images.tar.gz、calico-typha.yaml、calicoctl-linux-amd64、calicoctl.yaml（后面两个目前不用，但以后会用）。</p>
+<p> 解压 calico-images.tar.gz，将内容分发到每个节点（scp -r calico-images root@n1:&#x2F;root&#x2F;）并 load 到 docker：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">docker load -i calico-cni-v3.26.3.tar</span><br></pre></td></tr></table></figure>
+
+<p> 下载和修改文件内容：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">curl https://raw.githubusercontent.com/projectcalico/calico/v3.26.3/manifests/calico-typha.yaml -o calico.yaml</span><br></pre></td></tr></table></figure>
+<p> 把 CALICO_IPV4POOL_CIDR 指定为 pod 地址。</p>
+<p> 修改为 BGP 模式（关闭 IPIP）：</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="comment"># Enable IPIP</span></span><br><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">CALICO_IPV4POOL_IPIP</span></span><br><span class="line">  <span class="attr">value:</span> <span class="string">&quot;Always&quot;</span>   <span class="comment"># 改成 Off</span></span><br></pre></td></tr></table></figure>
+
+<p> 部署文件应用到集群：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubectl apply -f calico-typha.yaml</span><br></pre></td></tr></table></figure>
+
+<p> 等一会，kubectl get node 就能看见都是 Ready；执行 kubectl get pod -A 能看到都已经 Running。</p>
+]]></content>
+      <tags>
+        <tag>k8s一主两从部署</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>k8s运维项目实战</title>
+    <url>/2026/10/19/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/</url>
+    <content><![CDATA[<p>本文是 Kubernetes 运维实战专题，围绕「镜像仓库、日志、监控、网络策略、集群维护」五条主线，收录 15 个高频运维场景的可落地操作：从 Harbor 私有镜像仓库、Loki 容器日志方案、Prometheus 监控体系，到 NetworkPolicy 网络隔离、PodSecurityAdmission 准入控制、自定义 CRD 扩展，以及 cordon&#x2F;drain 节点维护与 ETCD 备份。每节均给出完整命令、配置清单与实操截图，剔除概念讲解，可直接对照复现。</p>
+<span id="more"></span>
+
+<h1 id="09k8s-运维-第一部分"><a href="#09k8s-运维-第一部分" class="headerlink" title="&#x3D;&#x3D;09k8s-运维-第一部分&#x3D;&#x3D;"></a>&#x3D;&#x3D;09k8s-运维-第一部分&#x3D;&#x3D;</h1><h2 id="01-harbor镜像仓库"><a href="#01-harbor镜像仓库" class="headerlink" title="01 harbor镜像仓库"></a>01 harbor镜像仓库</h2><p>如果镜像拉取不下来，可先拉取国内镜像源，再重新打 tag</p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/01harbor%E9%95%9C%E5%83%8F%E4%BB%93%E5%BA%93_001.png" alt="实操截图"></p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/01harbor%E9%95%9C%E5%83%8F%E4%BB%93%E5%BA%93_002.png" alt="实操截图"></p>
 <h3 id="一、创建名字空间"><a href="#一、创建名字空间" class="headerlink" title="一、创建名字空间"></a>一、创建名字空间</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">[root@k8s-master01 habor]# vi namespace-harbor.yaml</span><br><span class="line">apiVersion: v1 </span><br><span class="line">kind: Namespace                                                            </span><br><span class="line">metadata:      </span><br><span class="line">  name: harbor </span><br></pre></td></tr></table></figure>
@@ -539,12 +539,12 @@
 
 <p>进入loki，按照svc myapp维度查看日志</p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/02%E5%AE%B9%E5%99%A8%E6%97%A5%E5%BF%97%E6%96%B9%E6%A1%88_010.png" alt="实操截图"></p>
-<h2 id="03-Prometheus监控"><a href="#03-Prometheus监控" class="headerlink" title="03 Prometheus监控"></a>03 Prometheus监控</h2><h3 id="一、部署prometheus"><a href="#一、部署prometheus" class="headerlink" title="一、部署prometheus"></a>一、部署prometheus</h3><p>这章资源太多了，直接执行课件里的yaml文件</p>
+<h2 id="03-Prometheus监控"><a href="#03-Prometheus监控" class="headerlink" title="03 Prometheus监控"></a>03 Prometheus监控</h2><h3 id="一、部署prometheus"><a href="#一、部署prometheus" class="headerlink" title="一、部署prometheus"></a>一、部署prometheus</h3><p>本节涉及资源对象较多，直接应用如下 YAML 清单即可</p>
 <p>这节由于需要的资源太大，使用以下集群</p>
 <p>192.168.1.10 k8s-master01</p>
 <p>192.168.1.12 k8s-node01</p>
 <p>192.168.1.14 k8s-node02</p>
-<p>将课件Prometheus文件上传，解压后有10个目录和镜像文件</p>
+<p>上传 Prometheus 离线包并解压，得到 10 个目录与镜像文件</p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/03Prometheus%E7%9B%91%E6%8E%A7_001.png" alt="实操截图"></p>
 <p>导入prometheus所有镜像，所有节点都导入，避免下载速度太慢</p>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> `<span class="built_in">ls</span> prometheus-images`;<span class="keyword">do</span> docker load -i prometheus-images/<span class="variable">$i</span>;<span class="keyword">done</span></span><br></pre></td></tr></table></figure>
@@ -880,7 +880,7 @@
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/05NetworkPolicy_035.png" alt="实操截图"></p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/05NetworkPolicy_036.png" alt="实操截图"></p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/05NetworkPolicy_037.png" alt="实操截图"></p>
-<p>接下来我们对test命名空间打标签purpose&#x3D;production</p>
+<p>对 test 命名空间打标签 purpose&#x3D;production</p>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubectl label namespace <span class="built_in">test</span> purpose=production</span><br></pre></td></tr></table></figure>
 
 <p>test空间下的pod能访问web这个pod了。</p>
@@ -1228,7 +1228,7 @@
 
 <p>等待一会，get hpa，就有显示了</p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/07%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6_006.png" alt="实操截图"></p>
-<p>接下来我们将deployment的副本数设置为1</p>
+<p>将 deployment 的副本数设置为 1</p>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">vi my-deployemnt.yaml </span><br><span class="line">kubectl apply -f my-deployemnt.yaml</span><br></pre></td></tr></table></figure>
 
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/07%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6_007.png" alt="实操截图"></p>
@@ -1350,7 +1350,7 @@
 <p>接下来，我们将副本扩展到10</p>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubectl scale deployment -n <span class="built_in">test</span> myapp --replicas 10</span><br></pre></td></tr></table></figure>
 
-<p>get pod -n test，可以看到副本数还是1</p>
+<p>kubectl get pod -n test，副本数仍为 1</p>
 <p>因为ResourceQuota设置了pod最大数量为1，不会扩展</p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/07%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6_025.png" alt="实操截图"></p>
 <h1 id="11k8s-运维-第三部分"><a href="#11k8s-运维-第三部分" class="headerlink" title="&#x3D;&#x3D;11k8s-运维-第三部分&#x3D;&#x3D;"></a>&#x3D;&#x3D;11k8s-运维-第三部分&#x3D;&#x3D;</h1><h2 id="01-cordon与drain"><a href="#01-cordon与drain" class="headerlink" title="01 cordon与drain"></a>01 cordon与drain</h2><h3 id="cordon"><a href="#cordon" class="headerlink" title="cordon"></a>cordon</h3><p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/01cordon%E4%B8%8Edrain_001.png" alt="实操截图"></p>
@@ -1367,7 +1367,7 @@
 <p>接下来创建20个副本</p>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubectl create deployment myapp --image=wangyanglinux/myapp:v1.0 --replicas=20</span><br></pre></td></tr></table></figure>
 
-<p>可以看到20个副本全在k8s-node01上，不会被调度到node02节点</p>
+<p>20 个副本全部调度在 k8s-node01 上，不会调度到 node02 节点</p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/01cordon%E4%B8%8Edrain_005.png" alt="实操截图"></p>
 <p>取消不可调度</p>
 <figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">kubectl uncordon k8s-node02</span><br></pre></td></tr></table></figure>

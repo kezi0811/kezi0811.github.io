@@ -20,12 +20,12 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"example.com","root":"/","images":"/images","scheme":"Gemini","darkmode":true,"version":"8.28.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"codeblock":{"theme":{"light":"default","dark":"stackoverflow-dark"},"prism":{"light":"prism","dark":"prism-dark"},"copy_button":{"enable":true,"style":"mac","show_result":true},"fold":{"enable":false,"height":500},"language":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"},"path":"/search.xml","localsearch":{"enable":true,"top_n_per_article":1,"unescape":false,"preload":false}}</script><script src="/js/config.js" defer></script>
 
-    <meta name="description" content="本文整理自「Kubernetes笔记-bilibili」有道云笔记中运维三部分（09&#x2F;10&#x2F;11）的实操内容，涵盖 Harbor 镜像仓库、容器日志（Loki）、Prometheus 监控、Pod 固定 IP、NetworkPolicy、临时容器、端口转发、审计、Pod 与主机共享、安全参数、PodSecurityAdmission、资源限制、cordon&#x2F;drain">
+    <meta name="description" content="本文是 Kubernetes 运维实战专题，围绕「镜像仓库、日志、监控、网络策略、集群维护」五条主线，收录 15 个高频运维场景的可落地操作：从 Harbor 私有镜像仓库、Loki 容器日志方案、Prometheus 监控体系，到 NetworkPolicy 网络隔离、PodSecurityAdmission 准入控制、自定义 CRD 扩展，以及 cordon&#x2F;drain 节点维护与">
 <meta property="og:type" content="article">
 <meta property="og:title" content="k8s运维项目实战">
 <meta property="og:url" content="http://example.com/2026/10/19/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/index.html">
 <meta property="og:site_name" content="Kezi的技术笔记">
-<meta property="og:description" content="本文整理自「Kubernetes笔记-bilibili」有道云笔记中运维三部分（09&#x2F;10&#x2F;11）的实操内容，涵盖 Harbor 镜像仓库、容器日志（Loki）、Prometheus 监控、Pod 固定 IP、NetworkPolicy、临时容器、端口转发、审计、Pod 与主机共享、安全参数、PodSecurityAdmission、资源限制、cordon&#x2F;drain">
+<meta property="og:description" content="本文是 Kubernetes 运维实战专题，围绕「镜像仓库、日志、监控、网络策略、集群维护」五条主线，收录 15 个高频运维场景的可落地操作：从 Harbor 私有镜像仓库、Loki 容器日志方案、Prometheus 监控体系，到 NetworkPolicy 网络隔离、PodSecurityAdmission 准入控制、自定义 CRD 扩展，以及 cordon&#x2F;drain 节点维护与">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://example.com/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/01harbor%E9%95%9C%E5%83%8F%E4%BB%93%E5%BA%93_001.png">
 <meta property="og:image" content="http://example.com/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/01harbor%E9%95%9C%E5%83%8F%E4%BB%93%E5%BA%93_002.png">
@@ -257,7 +257,7 @@
 <meta property="og:image" content="http://example.com/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/03Backup_010.png">
 <meta property="og:image" content="http://example.com/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/03Backup_011.png">
 <meta property="article:published_time" content="2026-10-18T16:00:00.000Z">
-<meta property="article:modified_time" content="2026-10-19T07:42:43.679Z">
+<meta property="article:modified_time" content="2026-10-19T08:03:56.897Z">
 <meta property="article:author" content="kezi">
 <meta property="article:tag" content="NetworkPolicy">
 <meta property="article:tag" content="harbor">
@@ -463,10 +463,10 @@
     
     
     
-    <div class="post-body" itemprop="articleBody"><p>本文整理自「Kubernetes笔记-bilibili」有道云笔记中运维三部分（09&#x2F;10&#x2F;11）的实操内容，涵盖 Harbor 镜像仓库、容器日志（Loki）、Prometheus 监控、Pod 固定 IP、NetworkPolicy、临时容器、端口转发、审计、Pod 与主机共享、安全参数、PodSecurityAdmission、资源限制、cordon&#x2F;drain、自定义 CRD、ETCD 备份等。已剔除理论讲解，仅保留命令、配置、操作步骤与实操截图。</p>
+    <div class="post-body" itemprop="articleBody"><p>本文是 Kubernetes 运维实战专题，围绕「镜像仓库、日志、监控、网络策略、集群维护」五条主线，收录 15 个高频运维场景的可落地操作：从 Harbor 私有镜像仓库、Loki 容器日志方案、Prometheus 监控体系，到 NetworkPolicy 网络隔离、PodSecurityAdmission 准入控制、自定义 CRD 扩展，以及 cordon&#x2F;drain 节点维护与 ETCD 备份。每节均给出完整命令、配置清单与实操截图，剔除概念讲解，可直接对照复现。</p>
 <span id="more"></span>
 
-<h1 id="09k8s-运维-第一部分"><a href="#09k8s-运维-第一部分" class="headerlink" title="&#x3D;&#x3D;09k8s-运维-第一部分&#x3D;&#x3D;"></a>&#x3D;&#x3D;09k8s-运维-第一部分&#x3D;&#x3D;</h1><h2 id="01-harbor镜像仓库"><a href="#01-harbor镜像仓库" class="headerlink" title="01 harbor镜像仓库"></a>01 harbor镜像仓库</h2><p>这章，如果镜像拉不下来，可以拉取国内镜像，然后打tag</p>
+<h1 id="09k8s-运维-第一部分"><a href="#09k8s-运维-第一部分" class="headerlink" title="&#x3D;&#x3D;09k8s-运维-第一部分&#x3D;&#x3D;"></a>&#x3D;&#x3D;09k8s-运维-第一部分&#x3D;&#x3D;</h1><h2 id="01-harbor镜像仓库"><a href="#01-harbor镜像仓库" class="headerlink" title="01 harbor镜像仓库"></a>01 harbor镜像仓库</h2><p>如果镜像拉取不下来，可先拉取国内镜像源，再重新打 tag</p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/01harbor%E9%95%9C%E5%83%8F%E4%BB%93%E5%BA%93_001.png" alt="实操截图"></p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/01harbor%E9%95%9C%E5%83%8F%E4%BB%93%E5%BA%93_002.png" alt="实操截图"></p>
 <h3 id="一、创建名字空间"><a href="#一、创建名字空间" class="headerlink" title="一、创建名字空间"></a>一、创建名字空间</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master01 habor]# vi namespace-harbor.yaml</span><br><span class="line">apiVersion: v1 </span><br><span class="line">kind: Namespace                                                            </span><br><span class="line">metadata:      </span><br><span class="line">  name: harbor </span><br></pre></td></tr></table></figure>
@@ -591,12 +591,12 @@
 
 <p>进入loki，按照svc myapp维度查看日志</p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/02%E5%AE%B9%E5%99%A8%E6%97%A5%E5%BF%97%E6%96%B9%E6%A1%88_010.png" alt="实操截图"></p>
-<h2 id="03-Prometheus监控"><a href="#03-Prometheus监控" class="headerlink" title="03 Prometheus监控"></a>03 Prometheus监控</h2><h3 id="一、部署prometheus"><a href="#一、部署prometheus" class="headerlink" title="一、部署prometheus"></a>一、部署prometheus</h3><p>这章资源太多了，直接执行课件里的yaml文件</p>
+<h2 id="03-Prometheus监控"><a href="#03-Prometheus监控" class="headerlink" title="03 Prometheus监控"></a>03 Prometheus监控</h2><h3 id="一、部署prometheus"><a href="#一、部署prometheus" class="headerlink" title="一、部署prometheus"></a>一、部署prometheus</h3><p>本节涉及资源对象较多，直接应用如下 YAML 清单即可</p>
 <p>这节由于需要的资源太大，使用以下集群</p>
 <p>192.168.1.10 k8s-master01</p>
 <p>192.168.1.12 k8s-node01</p>
 <p>192.168.1.14 k8s-node02</p>
-<p>将课件Prometheus文件上传，解压后有10个目录和镜像文件</p>
+<p>上传 Prometheus 离线包并解压，得到 10 个目录与镜像文件</p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/03Prometheus%E7%9B%91%E6%8E%A7_001.png" alt="实操截图"></p>
 <p>导入prometheus所有镜像，所有节点都导入，避免下载速度太慢</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> `<span class="built_in">ls</span> prometheus-images`;<span class="keyword">do</span> docker load -i prometheus-images/<span class="variable">$i</span>;<span class="keyword">done</span></span><br></pre></td></tr></table></figure>
@@ -932,7 +932,7 @@
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/05NetworkPolicy_035.png" alt="实操截图"></p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/05NetworkPolicy_036.png" alt="实操截图"></p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/05NetworkPolicy_037.png" alt="实操截图"></p>
-<p>接下来我们对test命名空间打标签purpose&#x3D;production</p>
+<p>对 test 命名空间打标签 purpose&#x3D;production</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl label namespace <span class="built_in">test</span> purpose=production</span><br></pre></td></tr></table></figure>
 
 <p>test空间下的pod能访问web这个pod了。</p>
@@ -1280,7 +1280,7 @@
 
 <p>等待一会，get hpa，就有显示了</p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/07%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6_006.png" alt="实操截图"></p>
-<p>接下来我们将deployment的副本数设置为1</p>
+<p>将 deployment 的副本数设置为 1</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">vi my-deployemnt.yaml </span><br><span class="line">kubectl apply -f my-deployemnt.yaml</span><br></pre></td></tr></table></figure>
 
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/07%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6_007.png" alt="实操截图"></p>
@@ -1402,7 +1402,7 @@
 <p>接下来，我们将副本扩展到10</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl scale deployment -n <span class="built_in">test</span> myapp --replicas 10</span><br></pre></td></tr></table></figure>
 
-<p>get pod -n test，可以看到副本数还是1</p>
+<p>kubectl get pod -n test，副本数仍为 1</p>
 <p>因为ResourceQuota设置了pod最大数量为1，不会扩展</p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/07%E8%B5%84%E6%BA%90%E9%99%90%E5%88%B6_025.png" alt="实操截图"></p>
 <h1 id="11k8s-运维-第三部分"><a href="#11k8s-运维-第三部分" class="headerlink" title="&#x3D;&#x3D;11k8s-运维-第三部分&#x3D;&#x3D;"></a>&#x3D;&#x3D;11k8s-运维-第三部分&#x3D;&#x3D;</h1><h2 id="01-cordon与drain"><a href="#01-cordon与drain" class="headerlink" title="01 cordon与drain"></a>01 cordon与drain</h2><h3 id="cordon"><a href="#cordon" class="headerlink" title="cordon"></a>cordon</h3><p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/01cordon%E4%B8%8Edrain_001.png" alt="实操截图"></p>
@@ -1419,7 +1419,7 @@
 <p>接下来创建20个副本</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl create deployment myapp --image=wangyanglinux/myapp:v1.0 --replicas=20</span><br></pre></td></tr></table></figure>
 
-<p>可以看到20个副本全在k8s-node01上，不会被调度到node02节点</p>
+<p>20 个副本全部调度在 k8s-node01 上，不会调度到 node02 节点</p>
 <p><img src="/images/k8s%E8%BF%90%E7%BB%B4%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98/01cordon%E4%B8%8Edrain_005.png" alt="实操截图"></p>
 <p>取消不可调度</p>
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl uncordon k8s-node02</span><br></pre></td></tr></table></figure>
